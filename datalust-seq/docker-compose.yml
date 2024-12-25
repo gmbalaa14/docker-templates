@@ -1,0 +1,24 @@
+version: '3'
+services:
+  seq:
+    hostname: 0863f53ef4c0
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORDHASH=QDjMbLgK7KXGUz1JeV/ezn8N4yPsgo5oK0STZjEQay2RL+O13RBRmZnAV2veix2gUflSHUL6/s0GjSFyVrbevfP+08ivHiS2KGBzZt42PonD
+      - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+      - BASE_URI=
+      - DATA_DIR=/data
+      - TZ=Etc/UTC
+    volumes:
+      - '/home/lin/minio-root:/data'
+    ports:
+      - '5341:5341'
+      - '8090:80'
+    restart: unless-stopped
+    labels:
+      - Description=Seq
+      - 'Vendor=Datalust Pty Ltd'
+      - desktop.docker.io/wsl-distro=Ubuntu
+      - org.opencontainers.image.ref.name=ubuntu
+      - org.opencontainers.image.version=22.04
+    image: 'datalust/seq:latest'
