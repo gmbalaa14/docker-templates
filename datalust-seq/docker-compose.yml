@@ -1,24 +1,33 @@
-version: '3'
+name: datalust-seq
+
+networks:
+  default:
+
+volumes:
+  seq_data:
+
 services:
   seq:
-    hostname: 0863f53ef4c0
+    image: datalust/seq:latest
+    container_name: seq
+    hostname: seq
     environment:
-      - ACCEPT_EULA=Y
-      - SEQ_FIRSTRUN_ADMINPASSWORDHASH=QDjMbLgK7KXGUz1JeV/ezn8N4yPsgo5oK0STZjEQay2RL+O13RBRmZnAV2veix2gUflSHUL6/s0GjSFyVrbevfP+08ivHiS2KGBzZt42PonD
-      - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
-      - BASE_URI=
-      - DATA_DIR=/data
-      - TZ=Etc/UTC
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORDHASH: "${SEQ_ADMIN_PASSWORD_HASH}"
+      DATA_DIR: /data
+      TZ: Etc/UTC
     volumes:
-      - '/home/lin/minio-root:/data'
+      - seq_data:/data
     ports:
-      - '5341:5341'
-      - '8090:80'
+      - "${SEQ_INGEST_PORT:-5341}:5341"
+      - "${SEQ_UI_PORT:-8090}:80"
     restart: unless-stopped
-    labels:
-      - Description=Seq
-      - 'Vendor=Datalust Pty Ltd'
-      - desktop.docker.io/wsl-distro=Ubuntu
-      - org.opencontainers.image.ref.name=ubuntu
-      - org.opencontainers.image.version=22.04
-    image: 'datalust/seq:latest'
+
+# ── Nginx Proxy Manager integration (optional) ─────────────────────────
+# Requires proxy-net to exist: docker network create proxy-net
+# Uncomment to allow NPM to reverse-proxy this service.
+# networks:
+#   default:
+#   proxy-net:
+#     external: true
+#     name: proxy-net
