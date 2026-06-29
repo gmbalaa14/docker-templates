@@ -15,7 +15,8 @@ services:
     volumes:
       - headroom_data:/root/.headroom
     command: >
-      headroom proxy --port 8787 --host 0.0.0.0 --no-telemetry --memory --code-aware
+      sh -c 'headroom proxy --port 8787 --host 0.0.0.0 --no-telemetry --memory
+      $$([ "$$HEADROOM_CODE_AWARE_ENABLED" = "1" ] && echo "--code-aware")'
 
 volumes:
   headroom_data:
