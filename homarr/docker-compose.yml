@@ -10,11 +10,13 @@ volumes:
 
 services:
   homarr:
-    image: ghcr.io/ajnart/homarr:latest
+    image: ghcr.io/ajnart/homarr:0.15.3
     container_name: homarr
     restart: unless-stopped
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock  # optional: remove if Docker integration is not needed
+      # WARNING: Docker socket grants container access to the Docker daemon (root-equivalent on host).
+      # Remove this mount if Docker integration is not needed.
+      - /var/run/docker.sock:/var/run/docker.sock
       - homarr_configs:/app/data/configs
       - homarr_icons:/app/public/icons
       - homarr_data:/data

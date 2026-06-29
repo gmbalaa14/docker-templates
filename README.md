@@ -1,5 +1,7 @@
 # Docker Compose Templates
 
+![CI](https://github.com/gmbalaa14/docker-templates/actions/workflows/validate.yml/badge.svg)
+
 A curated collection of ready-to-use Docker Compose configurations for self-hosted services. Each template is self-contained, fully parameterised via `.env` files, and compatible with Docker CLI, [Portainer](https://www.portainer.io/), and Docker Desktop.
 
 ## Table of Contents
@@ -17,18 +19,18 @@ A curated collection of ready-to-use Docker Compose configurations for self-host
 
 ## Templates
 
-| Template | Description | Default Ports | Notes |
-|---|---|---|---|
-| [datalust-seq](./datalust-seq/README.md) | Structured log aggregation server | 5341 (ingest), 8090 (UI) | Auth via bcrypt hash in `.env` |
-| [headroom](./headroom/README.md) | LLM token optimizer proxy for Claude Code | 8787 | Localhost-only by default; set `HEADROOM_BIND_HOST=0.0.0.0` for LAN access |
-| [homarr](./homarr/README.md) | Customizable server dashboard | 7575 | Optional Docker integration |
-| [jenkins](./jenkins/README.md) | CI/CD automation server | 8080 (web), 50000 (agent) | Runs as root with privileged mode |
-| [nginx-proxy-manager](./nginx-proxy-manager/README.md) | Reverse proxy with Let's Encrypt SSL | 80, 443, 81 (admin) | Owns `proxy-net`; change default creds on first login |
-| [portainer](./portainer/README.md) | Docker management UI | 9443 (HTTPS), 8000 (tunnel) | Auth via bcrypt hash in `.env` |
-| [sonarqube](./sonarqube/README.md) | Code quality and security analysis | 9000 (UI) | Requires `SONAR_DB_PASSWORD` in `.env`; needs `vm.max_map_count=524288` |
-| [kafka/confluent/kafka-ui](./kafka/confluent/kafka-ui/README.md) | Multi-cluster Kafka web UI | 8080 | Add clusters via UI; requires `kafka-ui-net` |
-| [kafka/confluent/3-node-cluster-with-auth](./kafka/confluent/3-node-cluster-with-auth/README.md) | 3-node KRaft cluster (SASL/PLAIN) | 9092–9097, 29092–29094 | Requires `KAFKA_HOST_IP`, `KAFKA_CLUSTER_ID`, SASL creds in `.env` |
-| [kafka/confluent/3-node-cluster-without-auth](./kafka/confluent/3-node-cluster-without-auth/README.md) | 3-node KRaft cluster (no auth) | 9092–9097, 29092–29094 | Development use only — no authentication |
+| Template | Description | Default Ports | Image Version | Notes |
+|---|---|---|---|---|
+| [datalust-seq](./datalust-seq/README.md) | Structured log aggregation server | 5341 (ingest), 8090 (UI) | `datalust/seq:2024.3` | Auth via bcrypt hash in `.env` |
+| [headroom](./headroom/README.md) | LLM token optimizer proxy for Claude Code | 8787 | _(local build)_ | Localhost-only by default; set `HEADROOM_BIND_HOST=0.0.0.0` for LAN access |
+| [homarr](./homarr/README.md) | Customizable server dashboard | 7575 | `ghcr.io/ajnart/homarr:0.15.3` | Optional Docker integration |
+| [jenkins](./jenkins/README.md) | CI/CD automation server | 8080 (web), 50000 (agent) | `jenkins/jenkins:lts-jdk21` | Runs as root with privileged mode |
+| [nginx-proxy-manager](./nginx-proxy-manager/README.md) | Reverse proxy with Let's Encrypt SSL | 80, 443, 81 (admin) | `jc21/nginx-proxy-manager:2.11.3` | Owns `proxy-net`; change default creds on first login |
+| [portainer](./portainer/README.md) | Docker management UI | 9443 (HTTPS), 8000 (tunnel) | `portainer/portainer-ce:2.21.4` | Auth via bcrypt hash in `.env` |
+| [sonarqube](./sonarqube/README.md) | Code quality and security analysis | 9000 (UI) | `sonarqube:10.6-community` + `postgres:16` | Requires `SONAR_DB_PASSWORD` in `.env`; needs `vm.max_map_count=524288` |
+| [kafka/confluent/kafka-ui](./kafka/confluent/kafka-ui/README.md) | Multi-cluster Kafka web UI | 8080 | `provectuslabs/kafka-ui:v0.7.2` | Add clusters via UI; requires `kafka-ui-net` |
+| [kafka/confluent/3-node-cluster-with-auth](./kafka/confluent/3-node-cluster-with-auth/README.md) | 3-node KRaft cluster (SASL/PLAIN) | 9092–9097, 29092–29094 | `confluentinc/cp-kafka:7.8.0` | Requires `KAFKA_HOST_IP`, `KAFKA_CLUSTER_ID`, SASL creds in `.env` |
+| [kafka/confluent/3-node-cluster-without-auth](./kafka/confluent/3-node-cluster-without-auth/README.md) | 3-node KRaft cluster (no auth) | 9092–9097, 29092–29094 | `confluentinc/cp-kafka:7.8.0` | Development use only — no authentication |
 
 ---
 

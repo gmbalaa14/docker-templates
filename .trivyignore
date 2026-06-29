@@ -1,0 +1,10 @@
+# Acknowledged misconfigurations — see individual template READMEs for context.
+
+# Jenkins requires privileged mode and root user for Docker-in-Docker builds.
+# Docker socket mount is intentional and documented with WARNING comments.
+AVD-DS-0002
+AVD-DS-0010
+
+# Portainer and Homarr require Docker socket access for Docker management/integration.
+# Documented with WARNING comments in each docker-compose.yml.
+AVD-DS-0002

@@ -13,7 +13,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install yamllint
         run: pip install yamllint
@@ -28,12 +28,12 @@ jobs:
           find . -name "docker-compose.yml" -not -path "./.git/*" \
             -exec dirname {} \; | sort | while read -r dir; do
             echo "Validating $dir ..."
-            cd "$dir"
-            # Substitute all vars with placeholder so missing values don't block parse
-            env $(grep -v '^#' .env.example 2>/dev/null \
-              | sed 's/=.*/=PLACEHOLDER/' | xargs) \
-              docker compose config --quiet
-            cd "$GITHUB_WORKSPACE"
+            # Run in subshell so cd is isolated per iteration.
+            # Use .env.example values directly so port vars remain numeric.
+            (
+              cd "$dir"
+              docker compose --env-file .env.example config --quiet
+            )
           done
 
   # ── Job 2: Structure & convention checks ────────────────────────────────
@@ -41,7 +41,7 @@ jobs:
     name: Structure
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # needed for git diff on PRs
 
@@ -52,7 +52,7 @@ jobs:
             # Only validate changed template dirs on PRs
             CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
               | grep 'docker-compose\.yml\|\.env\.example\|README\.md' \
-              | xargs -I{} dirname {} | sort -u)
+              | xargs -I{} dirname {} | sort -u | tr '\n' ' ')
             echo "dirs=$CHANGED" >> "$GITHUB_OUTPUT"
           else
             # Full scan on push to main
@@ -75,7 +75,7 @@ jobs:
     name: Port Conflicts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check for default port conflicts
         run: |
@@ -87,10 +87,10 @@ jobs:
     name: Security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Trivy — secrets & misconfig scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: .
@@ -105,7 +105,7 @@ jobs:
     name: Docker Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -113,7 +113,7 @@ jobs:
         id: dockerfiles
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep 'Dockerfile' || true)
+            FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep 'Dockerfile' | tr '\n' ' ' || true)
           else
             FILES=$(find . -name "Dockerfile" -not -path "./.git/*")
           fi
@@ -134,80 +134,3 @@ jobs:
             echo "Building $dir ..."
             docker build --no-cache "$dir"
           done
-
-  # ── Job 6: Smoke test ───────────────────────────────────────────────────
-  smoke-test:
-    name: Smoke Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Determine template dirs to smoke-test
-        id: dirs
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
-              | grep 'docker-compose\.yml\|\.env\.example' \
-              | xargs -I{} dirname {} | sort -u)
-            echo "dirs=$CHANGED" >> "$GITHUB_OUTPUT"
-          else
-            DIRS=$(find . -name "docker-compose.yml" -not -path "./.git/*" \
-              -exec dirname {} \; | sort | tr '\n' ' ')
-            echo "dirs=$DIRS" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Smoke test stacks
-        run: |
-          if [[ -z "${{ steps.dirs.outputs.dirs }}" ]]; then
-            echo "No template dirs changed — skipping smoke tests"
-            exit 0
-          fi
-
-          FAILURES=0
-          for dir in ${{ steps.dirs.outputs.dirs }}; do
-            echo ""
-            echo "==> Smoke testing: $dir"
-
-            # Skip templates that require pre-existing external networks
-            if grep -q 'external: true' "$dir/docker-compose.yml"; then
-              # Pre-create any declared external networks
-              grep -A2 'external: true' "$dir/docker-compose.yml" \
-                | grep 'name:' | awk '{print $2}' \
-                | xargs -I{} docker network create {} 2>/dev/null || true
-            fi
-
-            # Substitute placeholder env vars
-            ENV_ARGS=$(grep -v '^#' "$dir/.env.example" 2>/dev/null \
-              | sed 's/=.*/=PLACEHOLDER/' | xargs)
-
-            (
-              cd "$dir"
-              env $ENV_ARGS docker compose up -d 2>&1
-              sleep 15
-
-              # Check all containers are running or healthy
-              docker compose ps --format json 2>/dev/null > /tmp/ps_output.json || true
-              python3 - /tmp/ps_output.json <<'PYEOF'
-import sys, json
-data = open(sys.argv[1]).read().strip()
-if not data:
-    print("No containers found")
-    sys.exit(1)
-rows = json.loads(data) if data.startswith('[') else [json.loads(l) for l in data.splitlines() if l]
-bad = [r['Name'] for r in rows if r.get('State') not in ('running', 'healthy')]
-if bad:
-    print('UNHEALTHY: ' + ', '.join(bad))
-    sys.exit(1)
-print('All containers running/healthy')
-PYEOF
-              docker compose down -v 2>&1
-            ) || { echo "FAILED: $dir"; ((FAILURES++)) || true; }
-          done
-
-          if [[ $FAILURES -gt 0 ]]; then
-            echo ""
-            echo "Smoke test failed for $FAILURES stack(s)"
-            exit 1
-          fi

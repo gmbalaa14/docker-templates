@@ -5,11 +5,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip to avoid memory fragmentation bugs
-RUN pip install --no-cache-dir --upgrade pip
-
-# Install ONLY the necessary proxy tools, avoiding heavy NVIDIA ML binaries
-RUN pip install --no-cache-dir "headroom-ai[proxy,code]"
+# Upgrade pip and install proxy tools in one layer to minimise image size.
+# hadolint ignore=DL3013
+RUN pip install --no-cache-dir "pip==24.0" \
+    && pip install --no-cache-dir "headroom-ai[proxy,code]"
 
 ENV HEADROOM_TELEMETRY=off
 ENV PYTHONUNBUFFERED=1

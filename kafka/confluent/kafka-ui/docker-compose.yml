@@ -10,7 +10,7 @@ volumes:
 
 services:
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest
+    image: provectuslabs/kafka-ui:v0.7.2
     container_name: kafka-ui
     ports:
       - "${KAFKA_UI_PORT:-8080}:8080"

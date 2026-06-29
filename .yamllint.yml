@@ -1,0 +1,15 @@
+extends: default
+
+rules:
+  line-length:
+    max: 200        # Kafka JAAS configs and advertised listeners are long
+    level: warning
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  document-start: disable   # docker-compose files don't use ---
+  indentation:
+    spaces: 2
+    indent-sequences: true
