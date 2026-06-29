@@ -19,3 +19,12 @@ services:
 
 volumes:
   headroom_data:
+
+# ── Nginx Proxy Manager integration (optional) ─────────────────────────
+# Requires proxy-net to exist: docker network create proxy-net
+# Uncomment to allow NPM to reverse-proxy this service.
+# networks:
+#   default:
+#   proxy-net:
+#     external: true
+#     name: proxy-net
