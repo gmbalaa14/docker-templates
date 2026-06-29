@@ -1,0 +1,33 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]  # allow custom tags used in some compose files
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [-c, .yamllint.yml]
+        files: docker-compose\.yml$
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.13.0-beta
+    hooks:
+      - id: hadolint
+        args: [--ignore, DL3008, --ignore, DL3009]  # apt-get version pinning — relaxed for base images
+
+  - repo: local
+    hooks:
+      - id: validate-templates
+        name: Validate changed docker-compose templates
+        language: script
+        entry: scripts/validate.sh
+        pass_filenames: false
+        files: docker-compose\.yml|\.env\.example|README\.md

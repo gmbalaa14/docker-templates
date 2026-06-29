@@ -8,9 +8,11 @@ volumes:
 
 services:
   jenkins:
-    image: jenkins/jenkins:lts
+    image: jenkins/jenkins:lts-jdk21
     container_name: jenkins
     restart: unless-stopped
+    # WARNING: privileged mode grants the container full host capabilities.
+    # Required here to allow Jenkins to run Docker-in-Docker builds.
     privileged: true
     user: root
     ports:
@@ -18,6 +20,8 @@ services:
       - "${JENKINS_AGENT_PORT:-50000}:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
+      # WARNING: Docker socket grants container access to the Docker daemon (root-equivalent on host).
+      # Required for Jenkins to build and run Docker containers.
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DOCKER_BIN:-/usr/local/bin/docker}:/usr/local/bin/docker
 

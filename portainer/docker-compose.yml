@@ -8,7 +8,7 @@ volumes:
 
 services:
   portainer:
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ce:2.21.4
     container_name: portainer
     restart: unless-stopped
     command: --admin-password '${PORTAINER_ADMIN_PASSWORD_HASH}'
@@ -17,6 +17,8 @@ services:
       - "${PORTAINER_TUNNEL_PORT:-8000}:8000"
     volumes:
       - portainer_data:/data
+      # WARNING: Docker socket grants container access to the Docker daemon (root-equivalent on host).
+      # Required for Portainer to manage Docker resources.
       - /var/run/docker.sock:/var/run/docker.sock
 
 # ── Nginx Proxy Manager integration (optional) ─────────────────────────

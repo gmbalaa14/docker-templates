@@ -8,7 +8,7 @@ volumes:
 
 services:
   seq:
-    image: datalust/seq:latest
+    image: datalust/seq:2024.3
     container_name: seq
     hostname: seq
     environment:
