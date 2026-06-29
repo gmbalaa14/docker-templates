@@ -1,34 +1,49 @@
-version: "3"
-services:
-  sonarqube:
-    image: sonarqube:community
-    restart: unless-stopped
-    depends_on:
-      - db
-    environment:
-      SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonar
-      SONAR_JDBC_USERNAME: sonar
-      SONAR_JDBC_PASSWORD: ddZ4sCiP54nnv6Ebjo4g
-    volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_extensions:/opt/sonarqube/extensions
-      - sonarqube_logs:/opt/sonarqube/logs
-    ports:
-      - "9000:9000"
-  db:
-    image: postgres:12
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: sonar
-      POSTGRES_PASSWORD: ddZ4sCiP54nnv6Ebjo4g
-    volumes:
-      - postgresql:/var/lib/postgresql
-      - postgresql_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+name: sonarqube
+
+networks:
+  default:
+
 volumes:
   sonarqube_data:
   sonarqube_extensions:
   sonarqube_logs:
   postgresql:
   postgresql_data:
+
+services:
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: "${SONAR_DB_PASSWORD}"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    ports:
+      - "${SONARQUBE_PORT:-9000}:9000"
+
+  db:
+    image: postgres:12
+    container_name: sonarqube-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: "${SONAR_DB_PASSWORD}"
+    volumes:
+      - postgresql:/var/lib/postgresql
+      - postgresql_data:/var/lib/postgresql/data
+
+# ── Nginx Proxy Manager integration (optional) ─────────────────────────
+# Requires proxy-net to exist: docker network create proxy-net
+# Uncomment to allow NPM to reverse-proxy this service.
+# networks:
+#   default:
+#   proxy-net:
+#     external: true
+#     name: proxy-net

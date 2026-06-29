@@ -1,0 +1,104 @@
+name: kafka-confluent-noauth
+
+networks:
+  kafka-net:
+    driver: bridge
+  kafka-ui-net:
+    external: true
+    name: kafka-ui-net
+
+volumes:
+  kafka1_data:
+  kafka2_data:
+  kafka3_data:
+
+services:
+  kafka1:
+    image: confluentinc/cp-kafka:7.8.0
+    hostname: kafka1
+    container_name: kafka1
+    ports:
+      - "${KAFKA1_EXTERNAL_PORT:-9092}:9092"
+      - "${KAFKA1_CONTROLLER_PORT:-9093}:9093"
+      - "${KAFKA1_INTERNAL_PORT:-29092}:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_BROKER_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka1:9093,2@kafka2:9093,3@kafka3:9093'
+      KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://kafka1:9093'
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka1:29092,EXTERNAL://${KAFKA_HOST_IP}:${KAFKA1_EXTERNAL_PORT:-9092}"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: '${KAFKA_CLUSTER_ID}'
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - kafka1_data:/var/lib/kafka/data
+    networks:
+      - kafka-net
+      - kafka-ui-net
+    restart: unless-stopped
+
+  kafka2:
+    image: confluentinc/cp-kafka:7.8.0
+    hostname: kafka2
+    container_name: kafka2
+    ports:
+      - "${KAFKA2_EXTERNAL_PORT:-9094}:9092"
+      - "${KAFKA2_CONTROLLER_PORT:-9095}:9093"
+      - "${KAFKA2_INTERNAL_PORT:-29093}:29092"
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_BROKER_ID: 2
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka1:9093,2@kafka2:9093,3@kafka3:9093'
+      KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://kafka2:9093'
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka2:29092,EXTERNAL://${KAFKA_HOST_IP}:${KAFKA2_EXTERNAL_PORT:-9094}"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: '${KAFKA_CLUSTER_ID}'
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - kafka2_data:/var/lib/kafka/data
+    networks:
+      - kafka-net
+      - kafka-ui-net
+    restart: unless-stopped
+
+  kafka3:
+    image: confluentinc/cp-kafka:7.8.0
+    hostname: kafka3
+    container_name: kafka3
+    ports:
+      - "${KAFKA3_EXTERNAL_PORT:-9096}:9092"
+      - "${KAFKA3_CONTROLLER_PORT:-9097}:9093"
+      - "${KAFKA3_INTERNAL_PORT:-29094}:29092"
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_BROKER_ID: 3
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka1:9093,2@kafka2:9093,3@kafka3:9093'
+      KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://kafka3:9093'
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka3:29092,EXTERNAL://${KAFKA_HOST_IP}:${KAFKA3_EXTERNAL_PORT:-9096}"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: '${KAFKA_CLUSTER_ID}'
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - kafka3_data:/var/lib/kafka/data
+    networks:
+      - kafka-net
+      - kafka-ui-net
+    restart: unless-stopped

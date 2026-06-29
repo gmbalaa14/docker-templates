@@ -1,16 +1,31 @@
-version: '3'
-#---------------------------------------------------------------------#
-#     Homarr - A simple, yet powerful dashboard for your server.      #
-#---------------------------------------------------------------------#
+name: homarr
+
+networks:
+  default:
+
+volumes:
+  homarr_configs:
+  homarr_icons:
+  homarr_data:
+
 services:
   homarr:
-    container_name: homarr
     image: ghcr.io/ajnart/homarr:latest
+    container_name: homarr
     restart: unless-stopped
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # Optional, only if you want docker integration
-      - ~/homarr/configs:/app/data/configs
-      - ~/homarr/icons:/app/public/icons
-      - ~/homarr/data:/data
+      - /var/run/docker.sock:/var/run/docker.sock  # optional: remove if Docker integration is not needed
+      - homarr_configs:/app/data/configs
+      - homarr_icons:/app/public/icons
+      - homarr_data:/data
     ports:
-      - '7575:7575'
+      - "${HOMARR_PORT:-7575}:7575"
+
+# ── Nginx Proxy Manager integration (optional) ─────────────────────────
+# Requires proxy-net to exist: docker network create proxy-net
+# Uncomment to allow NPM to reverse-proxy this service.
+# networks:
+#   default:
+#   proxy-net:
+#     external: true
+#     name: proxy-net

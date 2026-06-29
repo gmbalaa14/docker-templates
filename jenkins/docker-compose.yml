@@ -1,15 +1,31 @@
-version: '3.7'
+name: jenkins
+
+networks:
+  default:
+
+volumes:
+  jenkins_home:
+
 services:
   jenkins:
     image: jenkins/jenkins:lts
+    container_name: jenkins
     restart: unless-stopped
     privileged: true
     user: root
     ports:
-      - 8080:8080
-      - 50000:50000
-    container_name: jenkins
+      - "${JENKINS_PORT:-8080}:8080"
+      - "${JENKINS_AGENT_PORT:-50000}:50000"
     volumes:
-      - ~/jenkins:/var/jenkins_home
+      - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
-      - /usr/local/bin/docker:/usr/local/bin/docker
+      - ${DOCKER_BIN:-/usr/local/bin/docker}:/usr/local/bin/docker
+
+# ── Nginx Proxy Manager integration (optional) ─────────────────────────
+# Requires proxy-net to exist: docker network create proxy-net
+# Uncomment to allow NPM to reverse-proxy this service.
+# networks:
+#   default:
+#   proxy-net:
+#     external: true
+#     name: proxy-net
