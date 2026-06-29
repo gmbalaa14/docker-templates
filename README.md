@@ -20,6 +20,7 @@ A curated collection of ready-to-use Docker Compose configurations for self-host
 | Template | Description | Default Ports | Notes |
 |---|---|---|---|
 | [datalust-seq](./datalust-seq/README.md) | Structured log aggregation server | 5341 (ingest), 8090 (UI) | Auth via bcrypt hash in `.env` |
+| [headroom](./headroom/README.md) | LLM token optimizer proxy for Claude Code | 8787 | Localhost-only by default; set `HEADROOM_BIND_HOST=0.0.0.0` for LAN access |
 | [homarr](./homarr/README.md) | Customizable server dashboard | 7575 | Optional Docker integration |
 | [jenkins](./jenkins/README.md) | CI/CD automation server | 8080 (web), 50000 (agent) | Runs as root with privileged mode |
 | [nginx-proxy-manager](./nginx-proxy-manager/README.md) | Reverse proxy with Let's Encrypt SSL | 80, 443, 81 (admin) | Owns `proxy-net`; change default creds on first login |
@@ -57,6 +58,7 @@ All ports are configurable via `.env` variables. The table below shows defaults.
 
 | Service | Default Ports | Override Variable(s) | Conflict |
 |---|---|---|---|
+| headroom | 8787 (proxy) | `HEADROOM_PORT` | — |
 | datalust-seq | 5341 (ingest), 8090 (UI) | `SEQ_INGEST_PORT`, `SEQ_UI_PORT` | — |
 | homarr | 7575 | `HOMARR_PORT` | — |
 | jenkins | 8080 (web), 50000 (agent) | `JENKINS_PORT`, `JENKINS_AGENT_PORT` | **8080 conflicts with Kafka UI** |

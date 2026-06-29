@@ -1,0 +1,21 @@
+name: headroom
+
+services:
+  headroom:
+    build: .
+    container_name: headroom_proxy
+    restart: unless-stopped
+    ports:
+      - "${HEADROOM_BIND_HOST:-127.0.0.1}:${HEADROOM_PORT:-8787}:8787"
+    environment:
+      - HEADROOM_TELEMETRY=off
+      - HEADROOM_CODE_AWARE_ENABLED=${HEADROOM_CODE_AWARE_ENABLED:-1}
+      - PYTHONUNBUFFERED=1
+      - TZ=${TZ:-Asia/Kolkata}
+    volumes:
+      - headroom_data:/root/.headroom
+    command: >
+      headroom proxy --port 8787 --host 0.0.0.0 --no-telemetry --memory --code-aware
+
+volumes:
+  headroom_data:
