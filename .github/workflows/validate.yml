@@ -187,19 +187,20 @@ jobs:
               sleep 15
 
               # Check all containers are running or healthy
-              STATES=$(docker compose ps --format json 2>/dev/null \
-                | python3 -c "
+              docker compose ps --format json 2>/dev/null > /tmp/ps_output.json || true
+              python3 - /tmp/ps_output.json <<'PYEOF'
 import sys, json
-data = sys.stdin.read().strip()
+data = open(sys.argv[1]).read().strip()
+if not data:
+    print("No containers found")
+    sys.exit(1)
 rows = json.loads(data) if data.startswith('[') else [json.loads(l) for l in data.splitlines() if l]
 bad = [r['Name'] for r in rows if r.get('State') not in ('running', 'healthy')]
 if bad:
     print('UNHEALTHY: ' + ', '.join(bad))
     sys.exit(1)
-else:
-    print('All containers running/healthy')
-")
-              echo "$STATES"
+print('All containers running/healthy')
+PYEOF
               docker compose down -v 2>&1
             ) || { echo "FAILED: $dir"; ((FAILURES++)) || true; }
           done
