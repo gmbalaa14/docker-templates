@@ -50,7 +50,7 @@ jobs:
             # Only validate changed template dirs on PRs
             CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
               | grep 'docker-compose\.yml\|\.env\.example\|README\.md' \
-              | xargs -I{} dirname {} | sort -u | tr '\n' ' ')
+              | xargs -I{} dirname {} | sort -u | grep -v '^\.$' | tr '\n' ' ')
             echo "dirs=$CHANGED" >> "$GITHUB_OUTPUT"
           else
             # Full scan on push to main
