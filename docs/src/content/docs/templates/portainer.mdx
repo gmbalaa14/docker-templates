@@ -1,0 +1,132 @@
+---
+title: Portainer
+description: Visual Docker management — containers, images, volumes, networks, and stacks.
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+
+**Image:** `portainer/portainer-ce:2.21.4`  
+**Ports:** `9443` (HTTPS UI), `8000` (edge agent tunnel)  
+**Data:** `portainer_data` (named volume)
+
+## Introduction
+
+[Portainer Community Edition](https://www.portainer.io/) is a lightweight web UI for managing Docker resources. It provides a visual interface for containers, images, volumes, networks, and stacks — including deploying templates from this repo as stacks without using the command line.
+
+## When to Use
+
+- You want to manage Docker containers visually without remembering CLI commands
+- You want to deploy services from this repo via a web UI instead of `docker compose`
+- You manage multiple Docker hosts and want a single dashboard
+- You want to onboard non-technical team members to your self-hosted infrastructure
+
+## Architecture
+
+<Mermaid diagram={`
+graph LR
+    Browser["Browser"] -->|":9443 HTTPS"| Portainer
+    EdgeAgent["Remote Docker host\n(edge agent)"] -->|":8000 tunnel"| Portainer
+    subgraph Portainer["Portainer Container"]
+        UI["Web UI"]
+        Data["portainer_data volume"]
+    end
+    Portainer -->|"Docker socket"| DockerSocket["/var/run/docker.sock"]
+    DockerSocket --> LocalDocker["Local Docker Engine\n(containers, volumes, networks)"]
+`} />
+
+## Prerequisites
+
+- Docker Engine 20.10+, Docker Compose v2
+- Docker socket available on host
+
+## Ports
+
+| Port | Protocol | Description |
+|---|---|---|
+| `9443` | HTTPS | Portainer web UI (self-signed cert by default) |
+| `8000` | TCP | Edge agent tunnel for remote environments |
+
+Configurable via `PORTAINER_HTTPS_PORT` and `PORTAINER_TUNNEL_PORT`.
+
+## Volumes
+
+| Volume | Contents |
+|---|---|
+| `portainer_data` | Settings, users, endpoints, stack definitions |
+
+## Configuration
+
+```bash
+cd portainer
+cp .env.example .env
+```
+
+| Variable | Default | Notes |
+|---|---|---|
+| `PORTAINER_HTTPS_PORT` | `9443` | HTTPS UI port |
+| `PORTAINER_TUNNEL_PORT` | `8000` | Edge agent tunnel port |
+| `PORTAINER_ADMIN_PASSWORD_HASH` | _(empty)_ | Pre-set admin password (bcrypt hash). If unset, set via first-access UI |
+
+**Pre-setting an admin password (optional):**
+```bash
+docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'your-password' | cut -d ':' -f2
+# Paste the output as PORTAINER_ADMIN_PASSWORD_HASH in .env
+```
+
+## Workflow
+
+```bash
+# Start
+docker compose up -d
+
+# Open UI immediately — you have 5 minutes to set an admin password
+open https://localhost:9443
+# Accept the self-signed certificate warning
+
+# Stop
+docker compose down
+
+# Stop and remove all data (settings, stacks, endpoints)
+docker compose down -v
+```
+
+:::danger[5-minute timeout]
+If you don't set an admin password within **5 minutes** of first start, Portainer locks itself for security. Fix: `docker compose restart`, then set the password immediately.
+:::
+
+## Use Cases
+
+**Deploy this repo's templates as stacks:**
+1. **Stacks → Add Stack**
+2. Choose **Repository** and enter `https://github.com/gmbalaa14/docker-templates`
+3. Set the **Compose path** to `<template-name>/docker-compose.yml`
+4. Add environment variables in the **Environment variables** section
+
+**Manage running containers:**
+Navigate to **Containers** to start, stop, restart, inspect logs, or exec into any container.
+
+**Browse volumes and networks:**
+Navigate to **Volumes** or **Networks** to inspect, remove, or create Docker resources.
+
+**Multi-host management:**
+Add remote Docker hosts as **Environments** using the edge agent (port 8000).
+
+## Security
+
+:::caution[Docker socket]
+The Docker socket mount gives Portainer root-equivalent access to the host. Secure Portainer's admin account with a strong password and restrict access to the port.
+:::
+
+## Integration
+
+### Nginx Proxy Manager
+
+Uncomment the NPM block in `docker-compose.yml`, restart, and create a proxy host: `portainer.yourdomain.com → portainer:9000`.
+
+Note: If routing through NPM, set NPM to forward to port `9000` (Portainer's internal HTTP port) rather than `9443`, and let NPM handle SSL termination.
+
+## References
+
+- [Portainer CE documentation](https://docs.portainer.io/)
+- [Portainer stack deployment guide](https://docs.portainer.io/user/docker/stacks)
+- [Edge agent setup](https://docs.portainer.io/admin/environments/add/edge)

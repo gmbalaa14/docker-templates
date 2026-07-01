@@ -1,0 +1,179 @@
+---
+title: 3-Node Cluster (with Auth)
+description: Production-style 3-node Kafka KRaft cluster with SASL/PLAIN authentication.
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+
+**Image:** `confluentinc/cp-kafka:7.8.0` (3 containers)  
+**Ports:** `9092–9097` (external + controller), `29092–29094` (internal)  
+**Data:** `kafka1_data`, `kafka2_data`, `kafka3_data` (named volumes)  
+**Networks:** `kafka-net` (internal), `kafka-ui-net` (external, shared)
+
+## Introduction
+
+A 3-node Apache Kafka cluster running in KRaft mode (no ZooKeeper) with SASL/PLAIN authentication on all client-facing listeners. Designed for team environments and pre-production workloads where restricting broker access to known users is required.
+
+## When to Use
+
+- Multiple applications or team members connect to the same Kafka cluster
+- The host is accessible beyond a single developer's machine
+- You need to enforce per-client credentials for auditability
+- You're working towards a production-grade Kafka setup
+
+:::danger[Development use of no-auth cluster]
+If you only need Kafka for local development on your own machine, use the [cluster without auth](/templates/kafka/cluster-without-auth/) instead. SASL setup adds complexity that isn't worth it for solo local development.
+:::
+
+## Architecture
+
+<Mermaid diagram={`
+graph TB
+    subgraph Cluster["3-node KRaft Cluster (SASL/PLAIN)"]
+        subgraph B1["kafka1"]
+            SASL_EXT1["SASL_EXTERNAL\n:9092"]
+            PLAIN_INT1["PLAINTEXT_INTERNAL\n:29092"]
+            CTRL1["CONTROLLER\n:9093"]
+        end
+        subgraph B2["kafka2"]
+            SASL_EXT2["SASL_EXTERNAL\n:9094"]
+            PLAIN_INT2["PLAINTEXT_INTERNAL\n:29093"]
+            CTRL2["CONTROLLER\n:9095"]
+        end
+        subgraph B3["kafka3"]
+            SASL_EXT3["SASL_EXTERNAL\n:9096"]
+            PLAIN_INT3["PLAINTEXT_INTERNAL\n:29094"]
+            CTRL3["CONTROLLER\n:9097"]
+        end
+    end
+    CTRL1 <-->|"KRaft quorum"| CTRL2
+    CTRL2 <-->|"KRaft quorum"| CTRL3
+    CTRL1 <-->|"KRaft quorum"| CTRL3
+
+    ExtClient["External clients\n(SASL credentials required)"] -->|"KAFKA_HOST_IP:9092/9094/9096"| Cluster
+    KafkaUI["Kafka UI\n(kafka-ui-net)"] -->|"kafka1-3:29092-29094"| Cluster
+`} />
+
+## Prerequisites
+
+- Docker Engine 20.10+, Docker Compose v2
+- `kafka-ui-net` network: `docker network create kafka-ui-net`
+- `KAFKA_CLUSTER_ID` and `KAFKA_HOST_IP` must be set (see below)
+
+## Ports
+
+| Port | Broker | Listener | Used by |
+|---|---|---|---|
+| `9092` | 1 | SASL_EXTERNAL | External clients |
+| `9093` | 1 | CONTROLLER | KRaft quorum |
+| `9094` | 2 | SASL_EXTERNAL | External clients |
+| `9095` | 2 | CONTROLLER | KRaft quorum |
+| `9096` | 3 | SASL_EXTERNAL | External clients |
+| `9097` | 3 | CONTROLLER | KRaft quorum |
+| `29092` | 1 | PLAINTEXT_INTERNAL | Kafka UI via kafka-ui-net |
+| `29093` | 2 | PLAINTEXT_INTERNAL | Kafka UI via kafka-ui-net |
+| `29094` | 3 | PLAINTEXT_INTERNAL | Kafka UI via kafka-ui-net |
+
+## Configuration
+
+```bash
+cd kafka/confluent/3-node-cluster-with-auth
+cp .env.example .env
+```
+
+**Required variables (no defaults):**
+
+| Variable | How to get the value |
+|---|---|
+| `KAFKA_CLUSTER_ID` | `docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid` |
+| `KAFKA_HOST_IP` | See [Prerequisites](/prerequisites/#kafka-finding-your-host-ip) |
+| `KAFKA_ADMIN_PASSWORD` | Choose a strong password (e.g., 20+ chars) |
+| `KAFKA_TEST_PASSWORD` | Choose a strong password for the `test` client user |
+
+**Optional port overrides:**
+
+| Variable | Default |
+|---|---|
+| `KAFKA1_EXTERNAL_PORT` | `9092` |
+| `KAFKA1_CONTROLLER_PORT` | `9093` |
+| `KAFKA1_INTERNAL_PORT` | `29092` |
+| `KAFKA2_EXTERNAL_PORT` | `9094` |
+| `KAFKA2_CONTROLLER_PORT` | `9095` |
+| `KAFKA2_INTERNAL_PORT` | `29093` |
+| `KAFKA3_EXTERNAL_PORT` | `9096` |
+| `KAFKA3_CONTROLLER_PORT` | `9097` |
+| `KAFKA3_INTERNAL_PORT` | `29094` |
+
+## Workflow
+
+```bash
+# Generate required values
+docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid
+# Copy the output as KAFKA_CLUSTER_ID
+
+# Find host IP (Linux)
+ip route get 1 | awk '{print $7; exit}'
+
+# Fill in .env
+vim .env
+
+# Start the cluster
+docker compose up -d
+
+# Verify all 3 brokers are running
+docker compose ps
+
+# Check broker logs
+docker compose logs kafka1
+
+# Stop
+docker compose down
+
+# Stop and wipe all topic data
+docker compose down -v
+```
+
+## Connecting External Clients (SASL/PLAIN)
+
+Bootstrap servers:
+```
+KAFKA_HOST_IP:9092,KAFKA_HOST_IP:9094,KAFKA_HOST_IP:9096
+```
+
+SASL configuration (Java properties):
+```properties
+security.protocol=SASL_PLAINTEXT
+sasl.mechanism=PLAIN
+sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
+  username="admin" \
+  password="your-admin-password";
+```
+
+Python (kafka-python):
+```python
+from kafka import KafkaProducer
+producer = KafkaProducer(
+    bootstrap_servers=['host:9092', 'host:9094', 'host:9096'],
+    security_protocol='SASL_PLAINTEXT',
+    sasl_mechanism='PLAIN',
+    sasl_plain_username='admin',
+    sasl_plain_password='your-admin-password',
+)
+```
+
+## Connecting Kafka UI
+
+Bootstrap servers for Kafka UI (internal, via kafka-ui-net):
+```
+kafka1:29092,kafka2:29093,kafka3:29094
+```
+
+Authentication: SASL/PLAIN, username `admin`, password from `KAFKA_ADMIN_PASSWORD`.
+
+Note: Internal listeners use `PLAINTEXT` (no SASL) because the `kafka-ui-net` is a private Docker network. Only external listeners require SASL.
+
+## References
+
+- [Confluent Platform Kafka documentation](https://docs.confluent.io/platform/current/kafka/overview.html)
+- [KRaft overview](https://developer.confluent.io/learn/kraft/)
+- [SASL/PLAIN configuration](https://docs.confluent.io/platform/current/kafka/authentication_sasl/authentication_sasl_plain.html)

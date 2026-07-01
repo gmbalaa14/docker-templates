@@ -1,0 +1,83 @@
+---
+title: Docker Templates
+description: Curated Docker Compose templates for self-hosted services — copy, configure, deploy.
+template: splash
+hero:
+  tagline: Production-ready Docker Compose stacks for self-hosted services. Copy, configure, and deploy in minutes.
+  actions:
+    - text: Browse Templates
+      link: /templates/datalust-seq/
+      icon: right-arrow
+    - text: When to Use
+      link: /when-to-use/
+      icon: right-arrow
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What is this?
+
+A curated collection of self-contained Docker Compose configurations for self-hosted services. Every template is:
+
+- **Fully parameterised** via `.env` files — no secrets hardcoded anywhere
+- **Compatible** with Docker CLI, [Portainer](https://www.portainer.io/), and Docker Desktop on Mac and Windows
+- **Convention-enforced** — validated by CI on every commit (YAML lint, port conflicts, security scan)
+- **Production-oriented** — named volumes, `restart: unless-stopped`, security warnings included
+
+## Quick Start
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/gmbalaa14/docker-templates.git
+cd docker-templates
+
+# 2. Create shared networks (once per host)
+docker network create proxy-net
+docker network create kafka-ui-net
+
+# 3. Pick a template and navigate to it
+cd <template-name>
+
+# 4. Copy and fill in the environment file
+cp .env.example .env
+# Edit .env with your values
+
+# 5. Start the service
+docker compose up -d
+```
+
+## Templates at a Glance
+
+<CardGrid>
+  <Card title="Datalust Seq" icon="document">
+    Structured log aggregation with real-time search. Ingests JSON events via HTTP.
+  </Card>
+  <Card title="Headroom" icon="rocket">
+    Local proxy that optimises token usage for Claude API calls via caching.
+  </Card>
+  <Card title="Homarr" icon="laptop">
+    Customisable server dashboard with automatic Docker container discovery.
+  </Card>
+  <Card title="Jenkins" icon="setting">
+    CI/CD automation with Docker-in-Docker support for building and deploying pipelines.
+  </Card>
+  <Card title="Nginx Proxy Manager" icon="approve-check-circle">
+    Reverse proxy with Let's Encrypt SSL via a clean web UI. No Nginx config required.
+  </Card>
+  <Card title="Portainer" icon="bars">
+    Visual Docker management — containers, images, volumes, networks, stacks.
+  </Card>
+  <Card title="SonarQube" icon="magnifier">
+    Code quality and security analysis for 30+ languages with quality gates.
+  </Card>
+  <Card title="Kafka (Confluent)" icon="puzzle">
+    3-node KRaft clusters (with and without SASL/PLAIN auth) plus a multi-cluster web UI.
+  </Card>
+</CardGrid>
+
+## Not sure which template to use?
+
+See the [When to Use](/when-to-use/) guide for a decision flowchart and comparison table.
+
+Want to deploy multiple services together? See [Multi-Template Combinations](/combinations/).

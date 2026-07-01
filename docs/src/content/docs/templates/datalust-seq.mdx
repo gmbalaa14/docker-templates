@@ -1,0 +1,131 @@
+---
+title: Datalust Seq
+description: Self-hosted structured log aggregation with real-time search and alerting.
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+
+**Image:** `datalust/seq:2024.3`  
+**Ports:** `5341` (ingestion), `8090` (UI)  
+**Data:** `seq_data` (named volume)
+
+## Introduction
+
+[Seq](https://datalust.co/seq) is a self-hosted log server for structured (JSON) events. It provides real-time search, filtering, dashboards, and alerting across log streams from any application that writes JSON logs — including .NET (Serilog, NLog), Node.js, Python, and others.
+
+The free tier supports a single user with no event retention limits.
+
+## When to Use
+
+- Your application already produces structured JSON logs
+- You want to search and filter logs without log aggregation infrastructure (no Elasticsearch, no Logstash)
+- You're developing .NET applications and use Serilog or NLog
+- You want to set up alerts when specific log events occur
+
+## Architecture
+
+<Mermaid diagram={`
+graph LR
+    App1["Application 1"] -->|"HTTP POST :5341"| Seq
+    App2["Application 2"] -->|"HTTP POST :5341"| Seq
+    subgraph Seq["Seq Container"]
+        Ingest[":5341 Ingestion API"]
+        UI[":8090 Web UI"]
+        Store["seq_data volume"]
+    end
+    Ingest --> Store
+    Store --> UI
+    Browser["Browser"] --> UI
+`} />
+
+## Prerequisites
+
+- Docker Engine 20.10+, Docker Compose v2
+- No extra host requirements
+
+## Ports
+
+| Port | Protocol | Description |
+|---|---|---|
+| `5341` | HTTP | Log ingestion — applications send events here |
+| `8090` | HTTP | Web UI — search, dashboards, alerts |
+
+Both ports are configurable via `SEQ_INGEST_PORT` and `SEQ_UI_PORT`.
+
+## Configuration
+
+```bash
+cd datalust-seq
+cp .env.example .env
+```
+
+| Variable | Default | Notes |
+|---|---|---|
+| `SEQ_INGEST_PORT` | `5341` | Ingestion port |
+| `SEQ_UI_PORT` | `8090` | Web UI port |
+| `SEQ_FIRSTRUN_ADMINPASSWORDHASH` | _(empty)_ | Optional admin password hash. If unset, Seq starts unauthenticated |
+
+**To set an admin password before first start:**
+```bash
+echo 'your-password' | docker run --rm -i datalust/seq config hash
+# Copy the output hash into SEQ_FIRSTRUN_ADMINPASSWORDHASH in .env
+```
+
+## Workflow
+
+```bash
+# Start
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Open UI
+open http://localhost:8090
+
+# Stop
+docker compose down
+
+# Stop and remove data
+docker compose down -v
+```
+
+## Use Cases
+
+**Application log collection (.NET/Serilog):**
+```csharp
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Seq("http://localhost:5341")
+    .CreateLogger();
+```
+
+**Application log collection (Node.js/pino):**
+```bash
+node app.js | pino-seq --serverUrl http://localhost:5341
+```
+
+**Real-time log tailing:**
+Open the UI and use the query `@Level = 'Error'` to filter only errors.
+
+**Alerting:**
+In Seq UI → Signals → Create signal for a query pattern. Connect to a webhook for notifications.
+
+## Integration
+
+### Nginx Proxy Manager
+
+Uncomment the NPM block at the bottom of `docker-compose.yml`, then restart:
+```bash
+docker compose up -d
+```
+Create a proxy host in NPM: `seq.yourdomain.com → seq:8090`.
+
+### Portainer
+
+Deploy as a Portainer stack. In the Environment variables UI, add `SEQ_INGEST_PORT`, `SEQ_UI_PORT`, and optionally `SEQ_FIRSTRUN_ADMINPASSWORDHASH`.
+
+## References
+
+- [Seq documentation](https://docs.datalust.co/docs)
+- [Serilog.Sinks.Seq](https://github.com/datalust/serilog-sinks-seq)
+- [Seq pricing (free for single user)](https://datalust.co/seq/pricing)

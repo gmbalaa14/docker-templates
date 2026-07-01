@@ -1,0 +1,117 @@
+---
+title: Homarr
+description: Customisable server dashboard with automatic Docker container discovery.
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+
+**Image:** `ghcr.io/ajnart/homarr:0.15.3`  
+**Port:** `7575`  
+**Data:** `homarr_configs`, `homarr_icons`, `homarr_data` (named volumes)
+
+## Introduction
+
+[Homarr](https://homarr.dev/) is an open-source, customisable dashboard for self-hosted services. It can automatically discover running Docker containers and display service tiles with health status, links, and app integrations.
+
+## When to Use
+
+- You run multiple self-hosted services and want a single-pane-of-glass homepage
+- You want to visually organise and access your services from a browser
+- You want status indicators for your running containers without a full monitoring stack
+
+## Architecture
+
+<Mermaid diagram={`
+graph LR
+    Browser["Browser"] -->|":7575"| Homarr
+    subgraph Homarr["Homarr Container"]
+        UI["Web UI\n(drag & drop dashboard)"]
+        Configs["homarr_configs"]
+        Icons["homarr_icons"]
+        Data["homarr_data"]
+    end
+    Homarr -->|"optional:\nDocker socket"| DockerSocket["/var/run/docker.sock\n(container discovery)"]
+    DockerSocket --> Containers["Running containers\non the host"]
+`} />
+
+## Prerequisites
+
+- Docker Engine 20.10+, Docker Compose v2
+- No extra requirements. Docker socket is optional but enables auto-discovery.
+
+## Ports
+
+| Port | Protocol | Description |
+|---|---|---|
+| `7575` | HTTP | Homarr web UI |
+
+Configurable via `HOMARR_PORT`.
+
+## Volumes
+
+| Volume | Contents |
+|---|---|
+| `homarr_configs` | Dashboard layout and service configuration |
+| `homarr_icons` | Cached and uploaded service icons |
+| `homarr_data` | Application state |
+
+## Configuration
+
+```bash
+cd homarr
+cp .env.example .env
+```
+
+| Variable | Default | Notes |
+|---|---|---|
+| `HOMARR_PORT` | `7575` | Web UI port |
+
+No other variables are required for basic use.
+
+## Workflow
+
+```bash
+# Start
+docker compose up -d
+
+# Open UI
+open http://localhost:7575
+
+# Add services via Settings → Services in the UI
+# Drag tiles to rearrange them
+
+# Stop
+docker compose down
+
+# Stop and remove all data (layout, icons, state)
+docker compose down -v
+```
+
+## Use Cases
+
+**Service homepage:** Add tiles for every service in this repo — Portainer, Seq, Jenkins, SonarQube, Kafka UI — and access them all from one URL.
+
+**Container status board:** With the Docker socket mounted, Homarr shows whether each container is running, stopped, or in error — without opening Portainer.
+
+**Team portal:** Share the Homarr URL with your team as the entry point to all internal tools.
+
+## Security
+
+:::caution[Docker socket]
+The template mounts `/var/run/docker.sock` for container discovery. This gives the Homarr container root-equivalent access to the Docker host. If you don't need auto-discovery, remove the socket mount from `docker-compose.yml`.
+:::
+
+## Integration
+
+### Nginx Proxy Manager
+
+Uncomment the NPM block in `docker-compose.yml`, restart, and create a proxy host: `dashboard.yourdomain.com → homarr:7575`.
+
+### Portainer
+
+Deploy as a Portainer stack. Set `HOMARR_PORT` in the Environment variables UI if the default conflicts.
+
+## References
+
+- [Homarr documentation](https://homarr.dev/docs/getting-started/installation)
+- [Homarr GitHub](https://github.com/ajnart/homarr)

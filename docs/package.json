@@ -1,0 +1,15 @@
+{
+  "name": "docker-templates-docs",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.28.0",
+    "astro": "^4.16.0",
+    "mermaid": "^11.4.0"
+  }
+}

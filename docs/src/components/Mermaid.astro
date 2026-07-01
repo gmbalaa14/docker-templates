@@ -1,0 +1,26 @@
+---
+interface Props {
+  diagram: string;
+}
+const { diagram } = Astro.props;
+---
+
+<pre class="mermaid not-content">{diagram}</pre>
+
+<script>
+  import mermaid from 'mermaid';
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+</script>
+
+<style>
+  .mermaid {
+    background: transparent;
+    border: none;
+    padding: 0;
+    text-align: center;
+  }
+  .mermaid svg {
+    max-width: 100%;
+    height: auto;
+  }
+</style>

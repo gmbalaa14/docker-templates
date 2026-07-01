@@ -1,0 +1,151 @@
+---
+title: 3-Node Cluster (without Auth)
+description: 3-node KRaft Kafka cluster with plaintext listeners for local development.
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+
+**Image:** `confluentinc/cp-kafka:7.8.0` (3 containers)  
+**Ports:** `9092–9097` (external + controller), `29092–29094` (internal)  
+**Data:** `kafka1_data`, `kafka2_data`, `kafka3_data` (named volumes)  
+**Networks:** `kafka-net` (internal), `kafka-ui-net` (external, shared)
+
+:::danger[Development use only]
+This cluster has **no authentication**. Any client that can reach the host ports can produce and consume any topic. Do not run this on a machine accessible outside your local network.
+:::
+
+## Introduction
+
+A 3-node KRaft Kafka cluster identical in structure to the [auth cluster](/templates/kafka/cluster-with-auth/) but with plaintext (unauthenticated) listeners. No SASL configuration is required to connect.
+
+## When to Use
+
+- Local development on your own machine
+- Learning Kafka without credential complexity
+- Running integration tests in an isolated environment
+
+## Architecture
+
+<Mermaid diagram={`
+graph TB
+    subgraph Cluster["3-node KRaft Cluster (no auth)"]
+        subgraph B1["kafka1"]
+            EXT1["EXTERNAL (PLAINTEXT)\n:9092"]
+            INT1["INTERNAL\n:29092"]
+            CTRL1["CONTROLLER\n:9093"]
+        end
+        subgraph B2["kafka2"]
+            EXT2["EXTERNAL (PLAINTEXT)\n:9094"]
+            INT2["INTERNAL\n:29093"]
+            CTRL2["CONTROLLER\n:9095"]
+        end
+        subgraph B3["kafka3"]
+            EXT3["EXTERNAL (PLAINTEXT)\n:9096"]
+            INT3["INTERNAL\n:29094"]
+            CTRL3["CONTROLLER\n:9097"]
+        end
+    end
+    CTRL1 <-->|"KRaft quorum"| CTRL2
+    CTRL2 <-->|"KRaft quorum"| CTRL3
+
+    AnyClient["Any client\n(no credentials needed)"] -->|"KAFKA_HOST_IP:9092/9094/9096"| Cluster
+    KafkaUI["Kafka UI\n(kafka-ui-net)"] -->|"kafka1-3:29092-29094"| Cluster
+`} />
+
+## Prerequisites
+
+- Docker Engine 20.10+, Docker Compose v2
+- `kafka-ui-net` network: `docker network create kafka-ui-net`
+- `KAFKA_CLUSTER_ID` and `KAFKA_HOST_IP` must be set
+
+## Configuration
+
+```bash
+cd kafka/confluent/3-node-cluster-without-auth
+cp .env.example .env
+```
+
+**Required variables:**
+
+| Variable | How to get the value |
+|---|---|
+| `KAFKA_CLUSTER_ID` | `docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid` |
+| `KAFKA_HOST_IP` | See [Prerequisites](/prerequisites/#kafka-finding-your-host-ip) |
+
+Port override variables are the same as the auth cluster (see [Environment Variables](/env-reference/#kafka-3-node-cluster-without-auth)).
+
+## Workflow
+
+```bash
+# Generate cluster ID
+docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid
+
+# Fill in .env
+vim .env
+
+# Start
+docker compose up -d
+
+# Verify
+docker compose ps
+
+# Produce a test message
+docker compose exec kafka1 \
+  kafka-console-producer \
+  --bootstrap-server localhost:9092 \
+  --topic test-topic
+
+# Consume
+docker compose exec kafka1 \
+  kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic test-topic \
+  --from-beginning
+
+# Stop
+docker compose down
+
+# Stop and remove all topic data
+docker compose down -v
+```
+
+## Connecting External Clients (No Auth)
+
+```
+KAFKA_HOST_IP:9092,KAFKA_HOST_IP:9094,KAFKA_HOST_IP:9096
+```
+
+No security properties needed — connect with `security.protocol=PLAINTEXT`.
+
+Python example:
+```python
+from kafka import KafkaProducer
+producer = KafkaProducer(
+    bootstrap_servers=['localhost:9092', 'localhost:9094', 'localhost:9096'],
+)
+producer.send('my-topic', b'hello world')
+```
+
+## Connecting Kafka UI
+
+Bootstrap servers:
+```
+kafka1:29092,kafka2:29093,kafka3:29094
+```
+
+No authentication settings needed in Kafka UI.
+
+## Migrating to the Auth Cluster
+
+When you're ready to move to an authenticated setup:
+
+1. Export any topic/consumer group configuration you've created
+2. Bring down this cluster: `docker compose down -v` (or keep volumes if data is needed)
+3. Follow the [auth cluster](/templates/kafka/cluster-with-auth/) setup guide
+
+Note: The auth and no-auth clusters cannot share the same `KAFKA_CLUSTER_ID` or data volumes.
+
+## References
+
+- [KRaft overview](https://developer.confluent.io/learn/kraft/)
+- [Confluent Platform Kafka documentation](https://docs.confluent.io/platform/current/kafka/overview.html)

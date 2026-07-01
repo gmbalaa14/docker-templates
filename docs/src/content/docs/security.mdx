@@ -1,0 +1,94 @@
+---
+title: Security Hardening
+description: Default credentials to rotate, Docker socket risks, network exposure, and security best practices for Docker Templates.
+---
+
+## Default Credentials — Change Immediately
+
+Several templates ship with default credentials. These **must** be changed before exposing any service to a network.
+
+| Template | Default credential | Where to change |
+|---|---|---|
+| Nginx Proxy Manager | `admin@example.com` / `changeme` | First login at `http://host:81` → change email and password |
+| SonarQube | `admin` / `admin` | First login at `http://host:9000` → Administration → Security |
+| Jenkins | Auto-generated (printed to logs) | Wizard on first access at `http://host:8080` → create admin user |
+| Portainer | Set at first access | `https://host:9443` → set admin password within 5 min of start |
+| Datalust Seq | Optional — set via `SEQ_FIRSTRUN_ADMINPASSWORDHASH` | Generate hash, set in `.env` before first start |
+
+:::danger[Portainer timeout]
+Portainer locks itself if an admin password isn't set within **5 minutes** of first start. If this happens, run `docker compose restart` to reset the timer.
+:::
+
+## Docker Socket Risks
+
+Three templates mount the Docker socket (`/var/run/docker.sock`): **Homarr**, **Jenkins**, and **Portainer**.
+
+Mounting the Docker socket gives the container **root-equivalent access to the host**. A compromised or misconfigured container with socket access can:
+- Start/stop/delete any container on the host
+- Mount host filesystem paths
+- Escape the container isolation
+
+**Mitigations:**
+- Only mount the socket on trusted, non-publicly-exposed services
+- Use Portainer's RBAC to restrict user permissions
+- Consider using a Docker socket proxy (e.g., `tecnativa/docker-socket-proxy`) to limit which API calls are allowed
+
+## Privileged Mode — Jenkins
+
+Jenkins requires `privileged: true` and runs as `root` to support Docker-in-Docker builds. This gives the Jenkins container full, unrestricted access to the host kernel.
+
+**Mitigations:**
+- Never expose Jenkins port 8080 directly to the internet — put it behind NPM with authentication
+- Restrict who can trigger builds or access the Jenkins UI
+- Use pipeline credentials binding — never hardcode credentials in Jenkinsfiles
+
+## Network Exposure
+
+### Headroom
+
+By default, Headroom binds only to `127.0.0.1:8787` (localhost). If you set `HEADROOM_BIND_HOST=0.0.0.0` for LAN access, anyone on the network can use it to make Claude API calls billed to your account.
+
+**Mitigations:**
+- Only enable LAN mode on trusted internal networks
+- Apply firewall rules to restrict access to known IP ranges
+- Do not enable LAN mode on public cloud instances without a VPN
+
+### Kafka External Listeners
+
+Kafka brokers expose external listeners on `KAFKA_HOST_IP:9092`, `:9094`, `:9096`. These are designed for application clients and are not protected by a web server.
+
+**Mitigations (with-auth cluster):**
+- Use the SASL/PLAIN cluster in any environment accessible to multiple users
+- Set strong passwords in `KAFKA_ADMIN_PASSWORD` and `KAFKA_TEST_PASSWORD`
+- Never expose Kafka ports to the internet without TLS (not covered by these templates)
+
+**Mitigations (no-auth cluster):**
+- The no-auth cluster is for **local development only**
+- Never run it on a machine accessible from outside your LAN
+
+### Nginx Proxy Manager
+
+NPM requires ports 80 and 443 to be open. Ensure:
+- The admin UI on port 81 is **not** exposed to the internet
+- Default credentials are changed immediately after first login
+
+## Secrets and Environment Variables
+
+No template hardcodes secrets in `docker-compose.yml`. All sensitive values go in `.env` files which are excluded from version control via `.gitignore`.
+
+**Best practices:**
+- Never commit `.env` files — only commit `.env.example` with blank or example values
+- Use strong, randomly generated passwords (at minimum 20 characters)
+- For bcrypt hashes (Seq, Portainer), generate them using the documented commands in each template's `.env.example`
+
+## SonarQube Database Password
+
+SonarQube's `SONAR_DB_PASSWORD` has no default — the compose file will fail to start if it's not set. This is intentional. Choose a strong password and document it in your secrets manager.
+
+## Trivy Security Scanning
+
+This repo runs [Trivy](https://trivy.dev/) on every CI push to scan for:
+- Hardcoded secrets in tracked files
+- Misconfigurations in Docker Compose files
+
+Suppressed findings are documented in `.trivyignore`.

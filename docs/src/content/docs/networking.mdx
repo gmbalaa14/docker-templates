@@ -1,0 +1,113 @@
+---
+title: Networking Deep Dive
+description: How proxy-net and kafka-ui-net work, the NPM opt-in pattern, and network isolation in Docker Templates.
+---
+
+import Mermaid from '../../components/Mermaid.astro';
+
+## Overview
+
+This repo uses two shared Docker bridge networks to enable cross-service communication without hardcoding service addresses. All services are network-isolated by default and opt in explicitly.
+
+## The Two Shared Networks
+
+### `proxy-net`
+
+**Owner:** `nginx-proxy-manager`  
+**Purpose:** Allows Nginx Proxy Manager to forward HTTPS requests to any service that joins this network.
+
+Without `proxy-net`, services are only reachable by their direct host port. With it, NPM can resolve them by container name and proxy them behind a proper domain with SSL.
+
+<Mermaid diagram={`
+graph LR
+    Internet -->|":443 HTTPS"| NPM["Nginx Proxy Manager"]
+    NPM -->|"container name\nresolution"| SQ["SonarQube\n(joined proxy-net)"]
+    NPM -->|"container name\nresolution"| Jenkins["Jenkins\n(joined proxy-net)"]
+    NPM -->|"container name\nresolution"| Homarr["Homarr\n(joined proxy-net)"]
+    IsolatedService["Headroom\n(not joined)"] -.-|"unreachable\nfrom NPM"| NPM
+`} />
+
+### `kafka-ui-net`
+
+**Owner:** `kafka/confluent/kafka-ui` (configuration-wise; the network itself is created manually)  
+**Purpose:** Allows Kafka UI to discover and connect to Kafka broker containers by name.
+
+Kafka brokers advertise an internal listener on this network using their container hostname (e.g., `kafka1`, `kafka2`, `kafka3`). The UI uses these names to connect. Without this network, the UI would have to reach brokers via host-mapped ports, which is less reliable and requires the host IP.
+
+<Mermaid diagram={`
+graph LR
+    KUI["Kafka UI"] -->|"kafka1:29092"| K1["Broker 1\n(kafka-ui-net)"]
+    KUI -->|"kafka2:29093"| K2["Broker 2\n(kafka-ui-net)"]
+    KUI -->|"kafka3:29094"| K3["Broker 3\n(kafka-ui-net)"]
+`} />
+
+## Creating the Networks
+
+Both networks must be created once on the host. The templates declare them as `external: true`, so Docker Compose will error if they don't exist before `docker compose up`.
+
+```bash
+docker network create proxy-net
+docker network create kafka-ui-net
+```
+
+These commands are idempotent — re-running them on an already-created network is safe.
+
+## The NPM Opt-In Pattern
+
+Every template in this repo includes a commented block at the bottom of its `docker-compose.yml`. Uncommenting it adds the service to `proxy-net`:
+
+```yaml
+# ── Nginx Proxy Manager integration (optional) ─────────────────────────
+# Requires proxy-net to exist: docker network create proxy-net
+# Uncomment to allow NPM to reverse-proxy this service.
+# networks:
+#   default:
+#   proxy-net:
+#     external: true
+#     name: proxy-net
+```
+
+**How to enable it:**
+
+1. Open the template's `docker-compose.yml`
+2. Uncomment the `networks:` block above
+3. Restart the service: `docker compose up -d`
+4. In the NPM web UI (`http://your-host:81`), create a **Proxy Host** pointing to the container name and its internal port
+
+**Why two network entries?**  
+The `default:` entry keeps the service on its own default bridge network (for communication with other containers in the same compose project). The `proxy-net:` entry additionally joins the shared network so NPM can reach it. Without `default:`, the service would lose connectivity to its own stack.
+
+## Network Isolation
+
+Services that don't opt into `proxy-net` are only reachable via their mapped host ports. This is intentional — it prevents accidental cross-stack communication.
+
+| Service | Default reachable via | After NPM opt-in |
+|---|---|---|
+| Datalust Seq | `host:5341`, `host:8090` | Also via NPM proxy host |
+| Headroom | `127.0.0.1:8787` (localhost only) | Also via NPM proxy host |
+| Homarr | `host:7575` | Also via NPM proxy host |
+| Jenkins | `host:8080` | Also via NPM proxy host |
+| Portainer | `host:9443` (HTTPS) | Also via NPM proxy host |
+| SonarQube | `host:9000` | Also via NPM proxy host |
+
+## Kafka Network Details
+
+Kafka brokers use three distinct listener types:
+
+| Listener | Network | Used by |
+|---|---|---|
+| `INTERNAL` / `PLAINTEXT_INTERNAL` | `kafka-net` (private) | Broker-to-broker replication |
+| `EXTERNAL` / `PLAINTEXT` | Host (port-mapped) | External clients (producers/consumers outside Docker) |
+| `CONTROLLER` | `kafka-net` (private) | KRaft controller quorum |
+
+The `kafka-ui-net` is separate from the internal `kafka-net`. Brokers expose an additional listener on `kafka-ui-net` (ports `29092`, `29093`, `29094`) specifically for the UI to reach them by container hostname.
+
+**Connection strings for external clients (with auth):**
+```
+kafka-host-ip:9092,kafka-host-ip:9094,kafka-host-ip:9096
+```
+
+**Connection strings for Kafka UI (internal, via kafka-ui-net):**
+```
+kafka1:29092,kafka2:29093,kafka3:29094
+```

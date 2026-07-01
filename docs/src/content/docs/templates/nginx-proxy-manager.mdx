@@ -1,0 +1,133 @@
+---
+title: Nginx Proxy Manager
+description: Reverse proxy with Let's Encrypt SSL via a clean web UI. No Nginx config required.
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+
+**Image:** `jc21/nginx-proxy-manager:2.11.3`  
+**Ports:** `80` (HTTP), `443` (HTTPS), `81` (admin UI)  
+**Data:** `npm_data` (proxy config), `npm_letsencrypt` (certificates)
+
+## Introduction
+
+[Nginx Proxy Manager](https://nginxproxymanager.com/) provides a web UI for managing Nginx as a reverse proxy. It handles SSL certificate issuance and renewal via Let's Encrypt automatically — no Nginx configuration files required.
+
+This template **owns** the `proxy-net` shared bridge network. It must be started before any service that opts into that network.
+
+## When to Use
+
+- You want HTTPS for your self-hosted services without writing Nginx config
+- You need automatic Let's Encrypt certificate management
+- You want to route multiple domain names to services running on the same host
+
+## Architecture
+
+<Mermaid diagram={`
+graph LR
+    Internet["Internet"] -->|":80 HTTP"| NPM
+    Internet -->|":443 HTTPS\nTLS terminated"| NPM
+    You["Admin Browser"] -->|":81 Admin UI"| NPM
+
+    subgraph NPM["Nginx Proxy Manager"]
+        UI["Admin UI"]
+        Nginx["Nginx reverse proxy"]
+        npm_data["npm_data volume\n(config)"]
+        npm_le["npm_letsencrypt volume\n(certificates)"]
+    end
+
+    NPM -->|"proxy-net\ncontainer name"| SQ["SonarQube"]
+    NPM -->|"proxy-net\ncontainer name"| Jenkins["Jenkins"]
+    NPM -->|"proxy-net\ncontainer name"| Other["Other opted-in\nservices"]
+    NPM <-->|"ACME challenge"| LetsEncrypt["Let's Encrypt\n(internet)"]
+`} />
+
+## Prerequisites
+
+- Docker Engine 20.10+, Docker Compose v2
+- Ports **80 and 443 must be free** on the host — nothing else can bind these ports
+- For Let's Encrypt: a public domain name pointing to your host's IP
+
+## Ports
+
+| Port | Protocol | Description |
+|---|---|---|
+| `80` | HTTP | Public HTTP (used for ACME HTTP-01 challenge) |
+| `443` | HTTPS | Public HTTPS (TLS-terminated reverse proxy) |
+| `81` | HTTP | Admin web UI (do not expose to internet) |
+
+## Volumes
+
+| Volume | Contents |
+|---|---|
+| `npm_data` | Proxy host configs, user database, settings |
+| `npm_letsencrypt` | SSL certificates and ACME account keys |
+
+## Configuration
+
+```bash
+cd nginx-proxy-manager
+cp .env.example .env
+```
+
+| Variable | Default | Notes |
+|---|---|---|
+| `NPM_HTTP_PORT` | `80` | HTTP port — must be 80 for Let's Encrypt HTTP-01 |
+| `NPM_HTTPS_PORT` | `443` | HTTPS port |
+| `NPM_ADMIN_PORT` | `81` | Admin UI port |
+
+## Workflow
+
+```bash
+# Create the shared network first (owned by this template)
+docker network create proxy-net
+
+# Start NPM
+docker compose up -d
+
+# Open admin UI
+open http://localhost:81
+
+# Default credentials (MUST change on first login):
+# Email:    admin@example.com
+# Password: changeme
+```
+
+**Adding a proxy host:**
+1. Login to admin UI → **Proxy Hosts → Add Proxy Host**
+2. Set **Domain Names** to your domain (e.g., `jenkins.yourdomain.com`)
+3. Set **Scheme** to `http`, **Forward Hostname** to the container name (e.g., `jenkins`), **Forward Port** to the internal port (e.g., `8080`)
+4. On the **SSL** tab, request a Let's Encrypt certificate
+
+**Opting a service into proxy-net:**
+1. Open the service's `docker-compose.yml`
+2. Uncomment the NPM block at the bottom (see [Networking](/networking/#the-npm-opt-in-pattern))
+3. `docker compose up -d` in that service's directory
+4. The container name is now resolvable from NPM
+
+## Use Cases
+
+**HTTPS for Jenkins:** Domain `jenkins.yourdomain.com` → `jenkins:8080`  
+**HTTPS for SonarQube:** Domain `sonar.yourdomain.com` → `sonarqube:9000`  
+**HTTPS for Portainer:** Domain `portainer.yourdomain.com` → `portainer:9000` (or use Portainer's native HTTPS on 9443 directly)  
+**HTTPS for Homarr:** Domain `home.yourdomain.com` → `homarr:7575`
+
+## Security
+
+:::danger[Change default credentials]
+Default credentials (`admin@example.com` / `changeme`) must be changed immediately on first login. Anyone who can reach port 81 can take over all your proxy configurations.
+:::
+
+:::caution[Admin UI exposure]
+Do not expose port 81 to the internet. Restrict it to localhost or a trusted network only. If you need remote admin access, VPN in or restrict it with firewall rules.
+:::
+
+## Docker Desktop Notes
+
+On Docker Desktop, ports 80 and 443 should be available. If another process already binds these ports (e.g., a local web server), stop it first or remap NPM to alternate ports (though Let's Encrypt HTTP-01 requires port 80).
+
+## References
+
+- [Nginx Proxy Manager documentation](https://nginxproxymanager.com/guide/)
+- [Let's Encrypt](https://letsencrypt.org/)
+- [ACME HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge)

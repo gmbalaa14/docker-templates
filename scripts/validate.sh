@@ -129,16 +129,20 @@ for DIR in "${TEMPLATE_DIRS[@]}"; do
     fi
   fi
 
-  # 12. README contains all 11 required section headings
+  # 12. README contains all required section headings (skip for stub READMEs)
   README_FILE="$DIR/README.md"
   if [[ -f "$README_FILE" ]]; then
-    REQUIRED_SECTIONS=("Prerequisites" "Ports" "Volumes" "Setup" "Start" "Stop" "Portainer" "Docker Desktop" "Nginx Proxy Manager" "References")
-    for section in "${REQUIRED_SECTIONS[@]}"; do
-      if ! grep -qi "## .*$section\|### .*$section" "$README_FILE"; then
-        warn "$LABEL: README.md may be missing section '$section'"
-      fi
-    done
-    pass "$LABEL: README sections checked"
+    if grep -q '<!-- stub -->' "$README_FILE"; then
+      pass "$LABEL: README is a stub — section check skipped"
+    else
+      REQUIRED_SECTIONS=("Prerequisites" "Ports" "Volumes" "Setup" "Start" "Stop" "Portainer" "Docker Desktop" "Nginx Proxy Manager" "References")
+      for section in "${REQUIRED_SECTIONS[@]}"; do
+        if ! grep -qi "## .*$section\|### .*$section" "$README_FILE"; then
+          warn "$LABEL: README.md may be missing section '$section'"
+        fi
+      done
+      pass "$LABEL: README sections checked"
+    fi
   fi
 
   # 13. .env.example vars match ${VAR} references in docker-compose.yml

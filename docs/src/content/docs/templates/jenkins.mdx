@@ -1,0 +1,170 @@
+---
+title: Jenkins
+description: CI/CD automation server with Docker-in-Docker support for building and deploying pipelines.
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+
+**Image:** `jenkins/jenkins:lts-jdk21`  
+**Ports:** `8080` (web UI / REST API), `50000` (JNLP agent)  
+**Data:** `jenkins_home` (named volume)
+
+## Introduction
+
+[Jenkins](https://www.jenkins.io/) is a widely-used open-source CI/CD automation server. This template runs the LTS release with JDK 21 and Docker-in-Docker support, enabling pipelines to build and push Docker images directly.
+
+## When to Use
+
+- You need a self-hosted CI/CD server with pipeline-as-code (Jenkinsfile)
+- Your pipelines build Docker images or run Docker containers
+- You want integration with SonarQube for code quality gates
+- You need a free, open-source Jenkins alternative to hosted CI services
+
+## Architecture
+
+<Mermaid diagram={`
+graph LR
+    Dev["Developer\ngit push"] --> VCS["Git repository"]
+    VCS -->|"webhook"| Jenkins
+    subgraph Jenkins["Jenkins Container (privileged + root)"]
+        Master["Jenkins Master\n:8080"]
+        Pipeline["Pipeline execution"]
+        JHome["jenkins_home volume"]
+    end
+    Master --> Pipeline
+    Pipeline -->|"Docker builds\nvia socket"| DockerSocket["/var/run/docker.sock"]
+    DockerSocket --> Registry["Docker registry\nor local image"]
+    JNLP["External agents\n:50000 JNLP"] --> Master
+`} />
+
+## Prerequisites
+
+- Docker Engine 20.10+, Docker Compose v2
+- Docker socket available on host (for Docker-in-Docker builds)
+
+## Ports
+
+| Port | Protocol | Description |
+|---|---|---|
+| `8080` | HTTP | Web UI and REST API |
+| `50000` | TCP | JNLP agent connections |
+
+Both configurable via `JENKINS_PORT` and `JENKINS_AGENT_PORT`.
+
+:::note[Port conflict]
+Port 8080 is also the default for Kafka UI. If running both, set `JENKINS_PORT=8081` in `jenkins/.env`.
+:::
+
+## Volumes
+
+| Volume | Contents |
+|---|---|
+| `jenkins_home` | Jobs, plugins, pipeline workspaces, credentials |
+
+## Configuration
+
+```bash
+cd jenkins
+cp .env.example .env
+```
+
+| Variable | Default | Notes |
+|---|---|---|
+| `JENKINS_PORT` | `8080` | Web UI port |
+| `JENKINS_AGENT_PORT` | `50000` | JNLP agent port |
+
+## Workflow
+
+```bash
+# Start
+docker compose up -d
+
+# Get the initial admin password
+docker compose logs jenkins | grep -A 5 "Please use the following password"
+# OR
+docker compose exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+
+# Open setup wizard
+open http://localhost:8080
+
+# Install suggested plugins, create admin user, complete setup
+
+# Stop
+docker compose down
+
+# Stop and remove data (jobs, plugins, config — destructive)
+docker compose down -v
+```
+
+**First-run wizard:**
+1. Enter the initial admin password from the logs
+2. Choose **Install suggested plugins** (or select manually)
+3. Create an admin user
+4. Set the Jenkins URL (use your domain if behind NPM)
+
+## Use Cases
+
+**Docker image pipeline:**
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                sh 'docker build -t my-app:${BUILD_NUMBER} .'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'docker run --rm my-app:${BUILD_NUMBER} pytest'
+            }
+        }
+    }
+}
+```
+
+**SonarQube quality gate:**
+```groovy
+stage('Analyse') {
+    steps {
+        withSonarQubeEnv('sonarqube') {
+            sh 'mvn sonar:sonar'
+        }
+    }
+}
+stage('Quality Gate') {
+    steps {
+        waitForQualityGate abortPipeline: true
+    }
+}
+```
+
+## Security
+
+:::danger[Privileged mode]
+This template runs Jenkins as `root` with `privileged: true` to support Docker-in-Docker. This gives the container unrestricted access to the host kernel. **Never expose port 8080 directly to the internet.** Use Nginx Proxy Manager with authentication in front of Jenkins.
+:::
+
+:::caution[Docker socket]
+The Docker socket mount gives Jenkins (running as root) full control over all containers on the host. Restrict who can trigger builds or access Jenkins.
+:::
+
+## Integration
+
+### Nginx Proxy Manager
+
+Uncomment the NPM block in `docker-compose.yml`, restart, and create a proxy host: `jenkins.yourdomain.com → jenkins:8080`.
+
+### SonarQube
+
+In Jenkins: **Manage Jenkins → System → SonarQube servers** → add server URL `http://sonarqube:9000` (when both are on `proxy-net`).
+
+### Portainer
+
+Deploy as a Portainer stack. Set `JENKINS_PORT` if needed.
+
+## References
+
+- [Jenkins documentation](https://www.jenkins.io/doc/)
+- [Jenkins pipeline syntax](https://www.jenkins.io/doc/book/pipeline/syntax/)
+- [SonarQube Jenkins plugin](https://docs.sonarqube.org/latest/analyzing-source-code/scanners/jenkins-extension-sonarqube/)

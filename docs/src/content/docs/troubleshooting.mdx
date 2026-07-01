@@ -1,0 +1,156 @@
+---
+title: Troubleshooting
+description: Solutions to common errors when running Docker Templates.
+---
+
+## Port 8080 Already in Use
+
+**Symptom:** `docker compose up` fails with `Bind for 0.0.0.0:8080 failed: port is already allocated`.
+
+**Cause:** Both Jenkins (default `JENKINS_PORT=8080`) and Kafka UI (default `KAFKA_UI_PORT=8080`) use port 8080. If both are running, one will fail.
+
+**Fix:** Change one of the ports in its `.env` file before starting:
+
+```bash
+# In jenkins/.env
+JENKINS_PORT=8081
+
+# OR in kafka/confluent/kafka-ui/.env
+KAFKA_UI_PORT=8081
+```
+
+## SonarQube Fails to Start — `max virtual memory areas`
+
+**Symptom:** SonarQube container exits immediately. Logs show:
+```
+max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]
+```
+
+**Cause:** Elasticsearch (embedded in SonarQube) requires `vm.max_map_count ≥ 524288`. Linux defaults to 65530.
+
+**Fix (Linux):**
+```bash
+sudo sysctl -w vm.max_map_count=524288
+# To persist across reboots:
+echo "vm.max_map_count=524288" | sudo tee -a /etc/sysctl.conf
+```
+
+**Fix (Docker Desktop on Mac):**
+```bash
+docker run --rm --privileged alpine sysctl -w vm.max_map_count=524288
+```
+Note: this is reset when Docker Desktop restarts. For a permanent fix, create a Docker Desktop VM override file.
+
+**Fix (Docker Desktop on Windows/WSL2):**
+```powershell
+wsl -d docker-desktop sysctl -w vm.max_map_count=524288
+```
+
+## Kafka Producers Can't Connect — `LEADER_NOT_AVAILABLE` or Connection Refused
+
+**Symptom:** External Kafka clients (producers/consumers) fail to connect. Kafka UI shows brokers as unreachable.
+
+**Cause 1:** `KAFKA_HOST_IP` is not set or is set to `127.0.0.1`.
+
+External clients receive the advertised listener address from the broker. If `KAFKA_HOST_IP` is `127.0.0.1`, clients try to connect to localhost — which doesn't resolve outside the container.
+
+**Fix:** Set `KAFKA_HOST_IP` to the actual IP of the Docker host machine.
+
+```bash
+# Linux
+KAFKA_HOST_IP=$(ip route get 1 | awk '{print $7; exit}')
+
+# macOS
+KAFKA_HOST_IP=$(ipconfig getifaddr en0)
+
+# Docker Desktop (Mac or Windows)
+KAFKA_HOST_IP=host.docker.internal
+```
+
+Then add to `kafka/confluent/3-node-cluster-with-auth/.env` (or without-auth):
+```
+KAFKA_HOST_IP=<value from above>
+```
+
+**Cause 2:** `KAFKA_CLUSTER_ID` is missing or inconsistent.
+
+If brokers were started without a cluster ID, or with different IDs, the KRaft quorum will not form.
+
+**Fix:** Generate a fresh UUID and set it consistently in `.env`:
+```bash
+docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid
+```
+
+## `Network proxy-net declared as external, but could not be found`
+
+**Symptom:** `docker compose up` fails with the error above.
+
+**Cause:** The `proxy-net` bridge network hasn't been created on the host.
+
+**Fix:**
+```bash
+docker network create proxy-net
+```
+
+Same applies to `kafka-ui-net`:
+```bash
+docker network create kafka-ui-net
+```
+
+## Portainer Admin Password Expired
+
+**Symptom:** Portainer shows "This Portainer instance timed out for security purposes" on first access.
+
+**Cause:** Portainer requires an admin password to be set within 5 minutes of first start.
+
+**Fix:**
+```bash
+docker compose restart
+```
+Then immediately navigate to `https://host:9443` and set the admin password.
+
+## Headroom Proxy Not Reachable from Other Devices on LAN
+
+**Symptom:** Headroom is running but devices on the local network can't connect to it.
+
+**Cause:** By default, Headroom binds to `127.0.0.1` (localhost only).
+
+**Fix:** Set `HEADROOM_BIND_HOST=0.0.0.0` in `headroom/.env`, then restart:
+```bash
+docker compose up -d
+```
+
+:::caution[Security]
+Enabling LAN access means any device on the network can make Claude API calls billed to your account. Only do this on trusted private networks.
+:::
+
+## Jenkins Docker Builds Fail — `/var/run/docker.sock: permission denied`
+
+**Symptom:** Jenkins pipeline steps that run Docker commands fail with permission denied on the socket.
+
+**Cause:** The Jenkins container mounts the Docker socket but the Jenkins process doesn't have access to the `docker` group on the host.
+
+**Fix:** The template already sets `user: root` and `privileged: true` to handle this. If you've modified those settings, restore them in `jenkins/docker-compose.yml`.
+
+## `docker compose` vs `docker-compose`
+
+**Symptom:** Commands in the READMEs fail with "command not found".
+
+**Cause:** You have the legacy `docker-compose` v1 installed instead of the modern `docker compose` v2 plugin.
+
+**Fix:** Install Docker Compose v2 (the plugin):
+- [Linux instructions](https://docs.docker.com/compose/install/linux/)
+- Docker Desktop for Mac/Windows includes Compose v2 by default
+
+The difference: v1 is `docker-compose` (hyphen), v2 is `docker compose` (space, as a plugin).
+
+## SonarQube Database Password Not Set
+
+**Symptom:** SonarQube stack fails immediately with an error about missing environment variable.
+
+**Cause:** `SONAR_DB_PASSWORD` has no default and is required. The compose file will not start without it.
+
+**Fix:** Add a strong password to `sonarqube/.env`:
+```
+SONAR_DB_PASSWORD=your-strong-password-here
+```
