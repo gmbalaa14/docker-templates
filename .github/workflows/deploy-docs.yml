@@ -8,6 +8,7 @@ on:
       - '**/docker-compose.yml'
       - '**/.env.example'
       - 'scripts/validate.sh'
+  workflow_dispatch: {}
 
 concurrency:
   group: pages
