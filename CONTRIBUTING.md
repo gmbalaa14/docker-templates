@@ -4,9 +4,9 @@ Thank you for contributing! This guide covers everything you need to know to add
 
 ## Table of Contents
 
+- [Documentation Site](#documentation-site)
 - [Folder and File Naming](#folder-and-file-naming)
 - [Required Files Per Template](#required-files-per-template)
-- [Per-Template README Structure](#per-template-readme-structure)
 - [Docker Compose Best Practices](#docker-compose-best-practices)
 - [Shared Networks](#shared-networks)
 - [Security Warning Requirements](#security-warning-requirements)
@@ -14,6 +14,31 @@ Thank you for contributing! This guide covers everything you need to know to add
 - [Submitting a PR](#submitting-a-pr)
 - [PR Checklist](#pr-checklist)
 - [Code of Conduct](#code-of-conduct)
+
+---
+
+## Documentation Site
+
+This repo uses an [Astro Starlight](https://starlight.astro.build/) documentation site at `docs/`, published to [gmbalaa14.github.io/docker-templates](https://gmbalaa14.github.io/docker-templates/).
+
+**When adding a new template**, you must also add a documentation page for it:
+
+1. Create `docs/src/content/docs/templates/<your-service>.mdx`
+2. Follow the section structure used by existing template pages:
+   - Introduction → When to Use → Architecture (Mermaid diagram) → Prerequisites → Configuration → Workflow → Use Cases → Integration → References
+3. Add the new template to the `sidebar` array in `docs/astro.config.mjs`
+4. Add a Mermaid architecture diagram using the `<Mermaid>` component (`import Mermaid from '../../components/Mermaid.astro'`)
+
+**Per-template `README.md` files are stubs** — they contain only a link to the docs site. Do not add full documentation to a per-template README; put it in the MDX page instead.
+
+To build the docs site locally:
+```bash
+make docs
+# OR
+cd docs && npm ci && npm run build
+# OR for live preview
+cd docs && npm run dev
+```
 
 ---
 
@@ -34,26 +59,10 @@ Every template folder must contain:
 | File | Required | Notes |
 |---|---|---|
 | `docker-compose.yml` | Yes | The Compose configuration |
-| `README.md` | Yes | Documentation following the structure below |
+| `README.md` | Yes | Stub linking to the docs site (see [Documentation Site](#documentation-site)) |
 | `.env.example` | Yes (if any env vars used) | All variables with comments; no real secrets |
 
----
-
-## Per-Template README Structure
-
-Follow this section order so all READMEs are consistent and scannable:
-
-1. H1 service name and one-paragraph description
-2. Prerequisites (including platform-specific requirements)
-3. Ports table
-4. Volumes table
-5. Setup (`.env` configuration, required variables called out clearly)
-6. Start command
-7. Stop & Cleanup (`down` vs `down -v` clearly distinguished)
-8. Deploy with Portainer
-9. Docker Desktop Notes
-10. Using with Nginx Proxy Manager
-11. References / links
+The `README.md` in each template folder is a **stub** — it points readers to the docs site where the full documentation lives. Do not write full documentation in the per-template README.
 
 ---
 
@@ -169,7 +178,8 @@ Key requirements:
    docker compose up -d && docker compose ps
    ```
 5. Update the **Templates** table in the root `README.md` with a row for your service.
-6. Open a pull request against `main` using the checklist below.
+6. Add a documentation page at `docs/src/content/docs/templates/<your-service>.mdx` and add it to the sidebar in `docs/astro.config.mjs`.
+7. Open a pull request against `main` using the checklist below.
 
 ---
 
@@ -180,7 +190,7 @@ Copy this into your pull request description:
 ```
 - [ ] Folder name is lowercase-hyphenated
 - [ ] docker-compose.yml is present and valid (docker compose config passes)
-- [ ] README.md is present and follows the template structure
+- [ ] README.md stub present (contains <!-- stub --> and link to docs site)
 - [ ] .env.example is present with all variables documented
 - [ ] No hardcoded passwords or secrets in docker-compose.yml
 - [ ] No hardcoded IP addresses in docker-compose.yml
@@ -189,7 +199,10 @@ Copy this into your pull request description:
 - [ ] All host ports wrapped in ${VAR:-default} env vars
 - [ ] NPM opt-in commented block present at bottom of docker-compose.yml
 - [ ] Root README.md templates table updated
+- [ ] docs/src/content/docs/templates/<service>.mdx created
+- [ ] Sidebar entry added in docs/astro.config.mjs
 - [ ] docker compose up -d tested locally
+- [ ] make docs builds without errors
 ```
 
 ---

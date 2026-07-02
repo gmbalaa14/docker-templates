@@ -1,0 +1,200 @@
+---
+title: Multi-Template Combinations
+description: Common patterns for deploying multiple Docker Templates together for real-world use cases.
+---
+
+import Mermaid from '../../components/Mermaid.astro';
+
+These are proven combinations that address real-world self-hosting scenarios. Each builds on individual templates — read their pages first for single-template setup.
+
+## Full CI/CD Stack: Jenkins + SonarQube + Nginx Proxy Manager
+
+**Use case:** A self-hosted CI/CD pipeline with code quality gates and HTTPS access.
+
+<Mermaid diagram={`
+graph LR
+    Dev["Developer\npushes code"] --> Jenkins["Jenkins\n:8080"]
+    Jenkins -->|"triggers scan"| SQ["SonarQube\n:9000"]
+    SQ -->|"quality gate result"| Jenkins
+    Jenkins -->|"deploy if green"| Target["Target environment"]
+    Internet -->|"HTTPS :443"| NPM["Nginx Proxy Manager"]
+    NPM -->|"jenkins.yourdomain.com"| Jenkins
+    NPM -->|"sonar.yourdomain.com"| SQ
+`} />
+
+**Setup order:**
+
+1. Create shared networks:
+   ```bash
+   docker network create proxy-net
+   ```
+
+2. Start Nginx Proxy Manager first (it owns `proxy-net`):
+   ```bash
+   cd nginx-proxy-manager && docker compose up -d
+   ```
+
+3. Start SonarQube:
+   ```bash
+   cd sonarqube && docker compose up -d
+   ```
+   Change default credentials (`admin`/`admin`) on first login.
+
+4. Start Jenkins:
+   ```bash
+   cd jenkins && docker compose up -d
+   ```
+   Complete the setup wizard and create an admin user.
+
+5. Opt both services into `proxy-net` by uncommenting the NPM block in each `docker-compose.yml`, then restart them.
+
+6. In NPM, create proxy hosts for `jenkins.yourdomain.com → jenkins:8080` and `sonar.yourdomain.com → sonarqube:9000`.
+
+7. In Jenkins, install the SonarQube Scanner plugin and configure the server URL as `http://sonarqube:9000` (container-to-container via `proxy-net`).
+
+**Port conflict note:** Both Jenkins and SonarQube default to well-separated ports (8080 and 9000), so no conflict here.
+
+---
+
+## Full Kafka Stack: Cluster + Kafka UI
+
+**Use case:** A local or team Kafka environment with a web management interface.
+
+<Mermaid diagram={`
+graph LR
+    Producer["Kafka Producer/Consumer\n(external client)"] -->|":9092 :9094 :9096"| Brokers
+    subgraph Brokers["3-node KRaft Cluster"]
+        K1["Broker 1"]
+        K2["Broker 2"]
+        K3["Broker 3"]
+    end
+    KUI["Kafka UI\n:8080"] -->|"kafka1:29092\nkafka2:29093\nkafka3:29094\n(kafka-ui-net)"| Brokers
+`} />
+
+**Setup order:**
+
+1. Create the shared network:
+   ```bash
+   docker network create kafka-ui-net
+   ```
+
+2. Choose your cluster: with auth (production) or without (development). Generate required values:
+   ```bash
+   # Generate cluster ID
+   docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid
+   
+   # Find your host IP (Linux)
+   ip route get 1 | awk '{print $7; exit}'
+   ```
+
+3. Start the cluster:
+   ```bash
+   # With auth
+   cd kafka/confluent/3-node-cluster-with-auth
+   cp .env.example .env && vim .env  # Set KAFKA_CLUSTER_ID, KAFKA_HOST_IP, passwords
+   docker compose up -d
+   
+   # Without auth (dev only)
+   cd kafka/confluent/3-node-cluster-without-auth
+   cp .env.example .env && vim .env  # Set KAFKA_CLUSTER_ID, KAFKA_HOST_IP
+   docker compose up -d
+   ```
+
+4. Start Kafka UI:
+   ```bash
+   cd kafka/confluent/kafka-ui && docker compose up -d
+   ```
+
+5. Open Kafka UI at `http://host:8080` → **Settings → Configure new cluster** → add the cluster with bootstrap servers `kafka1:29092,kafka2:29093,kafka3:29094`.
+
+---
+
+## Dashboard + Management Stack: Homarr + Portainer
+
+**Use case:** A unified view of all services with Docker management capabilities.
+
+<Mermaid diagram={`
+graph TB
+    Browser["Browser"] -->|":7575"| Homarr["Homarr Dashboard"]
+    Browser -->|":9443 HTTPS"| Portainer["Portainer"]
+    Homarr -->|"Docker socket\n(container discovery)"| DockerSocket["/var/run/docker.sock"]
+    Portainer -->|"Docker socket\n(full management)"| DockerSocket
+`} />
+
+**Setup:**
+
+Both services mount the Docker socket independently. Start them in any order:
+
+```bash
+cd homarr && docker compose up -d
+cd portainer && docker compose up -d
+```
+
+In Homarr, add service tiles via **Settings → Services** — you can point them to any running service by URL.
+
+In Portainer, navigate to **Stacks** to deploy or manage other templates from this repo.
+
+---
+
+## Logging Stack: Datalust Seq + Any Application
+
+**Use case:** Centralised structured log collection from one or more applications.
+
+<Mermaid diagram={`
+graph LR
+    App1["App 1\n(Serilog HTTP sink)"] -->|"POST :5341/api/events/raw"| Seq
+    App2["App 2\n(NLog HTTP sink)"] -->|"POST :5341/api/events/raw"| Seq
+    App3["App 3\n(custom HTTP logger)"] -->|"POST :5341/api/events/raw"| Seq
+    Seq["Datalust Seq\n:5341 ingest\n:8090 UI"] --> UI["Web UI\nSearch & Alerts"]
+`} />
+
+**Setup:**
+
+```bash
+cd datalust-seq && docker compose up -d
+```
+
+Point your application's log sink at `http://host:5341`. Example Serilog configuration (.NET):
+
+```csharp
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Seq("http://host:5341")
+    .CreateLogger();
+```
+
+Open the Seq UI at `http://host:8090` to search and filter logs.
+
+---
+
+## Full Self-Hosted Stack
+
+**Use case:** A complete self-hosted environment — dashboard, proxy, CI/CD, logging, and code quality.
+
+Start services in this order to respect network dependencies:
+
+```bash
+# 1. Networks
+docker network create proxy-net
+docker network create kafka-ui-net
+
+# 2. Infrastructure (proxy first — owns proxy-net)
+cd nginx-proxy-manager && docker compose up -d
+
+# 3. Management
+cd portainer && docker compose up -d
+cd homarr && docker compose up -d
+
+# 4. Logging
+cd datalust-seq && docker compose up -d
+
+# 5. CI/CD and code quality
+cd sonarqube && docker compose up -d
+cd jenkins && docker compose up -d
+
+# 6. Opt services into proxy-net (edit each docker-compose.yml, then restart)
+# Then configure proxy hosts in NPM UI
+```
+
+**Total default ports used:** 80, 81, 443, 5341, 7575, 8080, 8090, 9000, 9443.
+
+No conflicts — see the [Environment Variables](/env-reference/) page if you need to remap any port.

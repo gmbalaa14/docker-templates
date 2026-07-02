@@ -1,0 +1,117 @@
+---
+title: Headroom
+description: Local proxy that optimises token usage for Claude API calls via intelligent caching.
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+
+**Image:** Local build (Python 3.11 slim)  
+**Port:** `8787` (proxy, localhost-only by default)  
+**Data:** `headroom_data` (named volume — session cache and config)
+
+## Introduction
+
+[Headroom](https://github.com/dxdx-labs/headroom) is a lightweight proxy that sits between your Claude Code (or any Claude API client) and the Anthropic API. It reduces token consumption through intelligent caching and context compression.
+
+Run it locally to reduce your own API costs, or on a LAN server to share the benefit with a team.
+
+## When to Use
+
+- Your Claude API bill is growing and you want to reduce it
+- You have a team using Claude Code on a shared network
+- You want session-level caching of API responses without changing your code
+
+## Architecture
+
+<Mermaid diagram={`
+graph LR
+    ClaudeCode["Claude Code\n(ANTHROPIC_BASE_URL=localhost:8787)"] -->|"API request"| Headroom
+    subgraph Headroom["Headroom Container"]
+        Proxy[":8787 Proxy"]
+        Cache["headroom_data\n(session cache)"]
+    end
+    Proxy -->|"cache miss:\nforward to Anthropic"| Anthropic["api.anthropic.com"]
+    Proxy -->|"cache hit:\nreturn cached"| ClaudeCode
+    Cache --- Proxy
+`} />
+
+## Prerequisites
+
+- Docker Engine 20.10+ with BuildKit support (for the local image build)
+- No extra host requirements for local mode
+
+## Ports
+
+| Port | Protocol | Description |
+|---|---|---|
+| `8787` | HTTP | Proxy endpoint — point `ANTHROPIC_BASE_URL` here |
+
+Default bind is `127.0.0.1:8787` (localhost only). Set `HEADROOM_BIND_HOST=0.0.0.0` for LAN access.
+
+## Configuration
+
+```bash
+cd headroom
+cp .env.example .env
+```
+
+| Variable | Default | Notes |
+|---|---|---|
+| `HEADROOM_PORT` | `8787` | Proxy port |
+| `HEADROOM_BIND_HOST` | `127.0.0.1` | Bind address. Use `0.0.0.0` for LAN access |
+| `HEADROOM_CODE_AWARE` | `true` | Code-aware token optimisation |
+| `HEADROOM_TELEMETRY` | `false` | Usage telemetry (disabled by default) |
+
+## Workflow
+
+```bash
+# Build and start
+docker compose up -d --build
+
+# Point Claude Code at the proxy (in your shell profile)
+export ANTHROPIC_BASE_URL=http://localhost:8787
+
+# View logs to verify requests are flowing through
+docker compose logs -f
+
+# Stop
+docker compose down
+```
+
+**For LAN access** (share proxy with team):
+```bash
+# In .env:
+HEADROOM_BIND_HOST=0.0.0.0
+
+# On client machines:
+export ANTHROPIC_BASE_URL=http://your-server-ip:8787
+```
+
+## Use Cases
+
+**Individual developer:** Run locally on your workstation. Set `ANTHROPIC_BASE_URL` in your shell profile. All Claude Code requests are cached automatically.
+
+**Team LAN server:** Set `HEADROOM_BIND_HOST=0.0.0.0` and run on a shared server. Team members set `ANTHROPIC_BASE_URL` to the server IP. Cache is shared across the team.
+
+**CI/CD pipeline:** Point CI runner environments at a shared Headroom instance to avoid re-tokenising the same codebase on every run.
+
+## Security
+
+:::caution[LAN mode warning]
+Setting `HEADROOM_BIND_HOST=0.0.0.0` exposes the proxy to anyone on your network. Any device can make Claude API calls billed to your account. Only enable on trusted private networks. Apply firewall rules to restrict access.
+:::
+
+## Integration
+
+### Nginx Proxy Manager
+
+Uncomment the NPM block in `docker-compose.yml` and create a proxy host: `headroom.yourdomain.com → headroom:8787`.
+
+:::note
+If exposing Headroom via NPM on a public URL, ensure access is restricted (HTTP basic auth in NPM, or VPN requirement).
+:::
+
+## References
+
+- [Headroom on PyPI](https://pypi.org/project/headroom-ai/)
+- [Claude API documentation](https://docs.anthropic.com/)

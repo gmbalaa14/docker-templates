@@ -1,0 +1,120 @@
+---
+title: Upgrade Guide
+description: How to upgrade image versions across templates and safely handle stateful service migrations.
+---
+
+## The Upgrade Pattern
+
+Every template pins to a specific image tag (e.g., `sonarqube:10.6-community`, `confluentinc/cp-kafka:7.8.0`). This is intentional — it prevents surprise updates and makes rollbacks straightforward.
+
+The upgrade workflow for any template:
+
+1. **Check the release notes** for the new version — especially breaking changes, deprecated config, or database migration requirements.
+2. **Update the image tag** in `docker-compose.yml`.
+3. **Update the root `README.md`** templates table — the `Image Version` column. The CI validation script (`validate.sh`) checks that these match and will fail if they drift.
+4. **Pull the new image:**
+   ```bash
+   docker compose pull
+   ```
+5. **Restart the service:**
+   ```bash
+   docker compose up -d
+   ```
+6. **Verify** the service starts and functions correctly.
+
+## Stateful Services
+
+Several templates use persistent named volumes. Take extra care with these — restoring data after a failed migration is difficult.
+
+### SonarQube + PostgreSQL
+
+SonarQube runs automatic database migrations on startup when upgrading. Follow this procedure:
+
+1. **Back up your data volumes before upgrading:**
+   ```bash
+   docker run --rm \
+     -v sonarqube_data:/data \
+     -v $(pwd)/backup:/backup \
+     alpine tar czf /backup/sonarqube_data.tar.gz -C /data .
+   ```
+   Repeat for `sonarqube_extensions`, `sonarqube_logs`, `postgresql`, and `postgresql_data`.
+
+2. **Stop the stack:**
+   ```bash
+   docker compose down
+   ```
+
+3. **Update the image tag** in `docker-compose.yml` and `README.md`.
+
+4. **Start the stack:**
+   ```bash
+   docker compose up -d
+   ```
+   SonarQube performs the database migration automatically on first start of the new version.
+
+5. **Check logs** for migration errors:
+   ```bash
+   docker compose logs -f sonarqube
+   ```
+
+:::danger[PostgreSQL major version upgrades]
+If the PostgreSQL major version changes (e.g., 15 → 16), the data directory format is incompatible. You must `pg_dump` the database, destroy the old volume, start the new PostgreSQL, and `pg_restore`. Check SonarQube release notes for supported PostgreSQL versions before upgrading.
+:::
+
+### Jenkins
+
+Jenkins home (`jenkins_home` volume) is generally forward-compatible across LTS releases, but plugins may need updates.
+
+1. Back up the volume:
+   ```bash
+   docker run --rm \
+     -v jenkins_home:/data \
+     -v $(pwd)/backup:/backup \
+     alpine tar czf /backup/jenkins_home.tar.gz -C /data .
+   ```
+
+2. Update the image tag and restart. Jenkins will detect the version change and prompt for plugin updates via **Manage Jenkins → Plugin Manager**.
+
+3. If a plugin is incompatible, check the [Jenkins plugin compatibility table](https://www.jenkins.io/doc/book/managing/plugins/).
+
+### Datalust Seq
+
+Seq's data volume (`seq_data`) is maintained by Seq itself and migrated automatically on upgrade. The same backup-before-upgrade approach applies:
+
+```bash
+docker run --rm \
+  -v seq_data:/data \
+  -v $(pwd)/backup:/backup \
+  alpine tar czf /backup/seq_data.tar.gz -C /data .
+```
+
+## Stateless Services
+
+Templates without persistent user data can be upgraded without ceremony — just pull and restart. These include:
+
+- **Headroom** — local build; rebuild with `docker compose build --no-cache && docker compose up -d`
+- **Homarr** — config in volume but forward-compatible
+- **Kafka UI** — stateless web UI; cluster configs are persisted in a volume but format is stable
+- **Nginx Proxy Manager** — proxy config and certs in volumes; generally safe to upgrade
+- **Portainer** — settings in `portainer_data`; back up before major version upgrades
+
+## Kafka Cluster Upgrades
+
+Kafka cluster upgrades require careful sequencing when upgrading across major versions. Confluent provides [rolling upgrade documentation](https://docs.confluent.io/platform/current/installation/upgrade.html).
+
+For minor/patch upgrades within the same major version (e.g., 7.8.0 → 7.8.1), a rolling restart is usually sufficient:
+1. Update the image tag
+2. `docker compose up -d` (Compose restarts containers one by one)
+3. Monitor broker logs during restart
+
+For major version upgrades, follow Confluent's migration guide — KRaft protocol versions may require explicit migration steps.
+
+## Keeping the Root README in Sync
+
+The CI pipeline (`validate.sh` rule 14) checks that the image version in each `docker-compose.yml` matches the version listed in the root `README.md` templates table. If you upgrade an image and forget to update the table, CI will fail.
+
+The image version column in `README.md` must match the `image:` value in `docker-compose.yml` exactly:
+
+```markdown
+| [sonarqube](./sonarqube/) | ... | `sonarqube:10.7-community` + `postgres:16` | ... |
+```

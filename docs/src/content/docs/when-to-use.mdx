@@ -1,0 +1,74 @@
+---
+title: When to Use
+description: Decision guide for choosing the right Docker template for your situation.
+---
+
+import Mermaid from '../../components/Mermaid.astro';
+
+This page helps you pick the right template — or combination of templates — for your situation.
+
+## Decision Flowchart
+
+<Mermaid diagram={`
+flowchart TD
+    Start([What do you need?]) --> A{Logs & observability?}
+    A -->|Yes| Seq[Datalust Seq\nStructured log aggregation]
+    A -->|No| B{Dashboard for your services?}
+    B -->|Yes| Homarr[Homarr\nService dashboard]
+    B -->|No| C{Manage Docker visually?}
+    C -->|Yes| Portainer[Portainer\nDocker management UI]
+    C -->|No| D{CI/CD pipelines?}
+    D -->|Yes| Jenkins[Jenkins\nCI/CD with Docker-in-Docker]
+    D -->|No| E{Code quality analysis?}
+    E -->|Yes| SonarQube[SonarQube + PostgreSQL\nStatic analysis & security scan]
+    E -->|No| F{Reverse proxy + SSL?}
+    F -->|Yes| NPM[Nginx Proxy Manager\nReverse proxy with Let's Encrypt]
+    F -->|No| G{Message streaming?}
+    G -->|Yes| H{Need authentication?}
+    H -->|Production| KafkaAuth[3-node KRaft Cluster\nwith SASL/PLAIN auth]
+    H -->|Development| KafkaNoAuth[3-node KRaft Cluster\nno authentication]
+    G -->|No - need Kafka UI| KafkaUI[Kafka UI\nMulti-cluster web interface]
+    F -->|No| I{Claude API token costs?}
+    I -->|Yes - want to reduce them| Headroom[Headroom\nLLM token optimizer proxy]
+`} />
+
+## Comparison Table
+
+| Template | Best for | Resource needs | Requires other templates? |
+|---|---|---|---|
+| [Datalust Seq](/templates/datalust-seq/) | Collecting structured logs from apps | Low (single container) | No |
+| [Headroom](/templates/headroom/) | Reducing Claude API costs on a team LAN | Very low | No |
+| [Homarr](/templates/homarr/) | A homepage showing all your self-hosted services | Low | Optional: Docker socket |
+| [Jenkins](/templates/jenkins/) | Building, testing, deploying code via pipelines | Medium (JVM) | Optional: NPM for SSL |
+| [Nginx Proxy Manager](/templates/nginx-proxy-manager/) | Terminating SSL and routing to internal services | Very low | Ports 80 + 443 available |
+| [Portainer](/templates/portainer/) | Exploring and managing Docker resources visually | Very low | No |
+| [SonarQube](/templates/sonarqube/) | Static analysis and security scanning (CI gate or ad-hoc) | High (4 GB RAM min) | No (PostgreSQL bundled) |
+| [Kafka UI](/templates/kafka/kafka-ui/) | Browsing and managing Kafka clusters from a browser | Low | Needs a Kafka cluster |
+| [3-node cluster (auth)](/templates/kafka/cluster-with-auth/) | Production Kafka with SASL/PLAIN access control | Medium–High | Optional: Kafka UI |
+| [3-node cluster (no auth)](/templates/kafka/cluster-without-auth/) | Local development and testing with Kafka | Medium | Optional: Kafka UI |
+
+## Situation-to-Template Map
+
+### "I want to see all my services in one place"
+→ **Homarr** for a dashboard. Add **Portainer** if you want to manage containers (start/stop/inspect) from the same browser.
+
+### "I want SSL on all my services without touching Nginx config"
+→ **Nginx Proxy Manager**. Deploy it first, then opt other services into `proxy-net`. See [Networking](/networking/).
+
+### "I want to run CI/CD on my own hardware"
+→ **Jenkins** for pipelines. Pair with **SonarQube** for code quality gates and **NPM** to expose Jenkins over HTTPS. See [Combinations](/combinations/).
+
+### "My application writes structured JSON logs and I want to query them"
+→ **Datalust Seq**. Point your app's Serilog or NLog HTTP sink at port `5341`.
+
+### "I'm prototyping with Kafka and don't want auth complexity"
+→ **3-node cluster without auth** + **Kafka UI**. Start both, add clusters via the UI.
+
+### "I need a Kafka cluster that's safe to expose to a team"
+→ **3-node cluster with auth** (SASL/PLAIN). Pair with **Kafka UI** for management.
+
+### "I'm using Claude Code and my API bill is growing"
+→ **Headroom**. Run it locally or on a LAN server and point `ANTHROPIC_BASE_URL` at it.
+
+### "I want to scan my code for bugs and security issues"
+→ **SonarQube**. Run a scan locally or integrate it into a **Jenkins** pipeline.

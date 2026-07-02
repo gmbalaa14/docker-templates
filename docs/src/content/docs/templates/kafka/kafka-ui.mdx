@@ -1,0 +1,124 @@
+---
+title: Kafka UI
+description: Multi-cluster Kafka web interface for browsing topics, consumer groups, and messages.
+---
+
+import Mermaid from '../../../../components/Mermaid.astro';
+
+**Image:** `provectuslabs/kafka-ui:v0.7.2`  
+**Port:** `8080`  
+**Data:** `kafka_ui_config` (named volume — persisted cluster configs)  
+**Network:** `kafka-ui-net` (external, shared with broker clusters)
+
+## Introduction
+
+[Kafka UI](https://github.com/provectus/kafka-ui) is a free, open-source web interface for Apache Kafka. It supports connecting to multiple clusters simultaneously and provides visual management of topics, consumer groups, brokers, schemas, and messages.
+
+## When to Use
+
+- You want to browse Kafka topics and messages without CLI tools
+- You want to monitor consumer group lag visually
+- You're managing multiple Kafka clusters and want a single interface
+- You need to create or delete topics via a web UI
+
+## Architecture
+
+<Mermaid diagram={`
+graph LR
+    Browser["Browser"] -->|":8080"| KUI
+    subgraph KUI["Kafka UI Container"]
+        App["Web Application"]
+        Config["kafka_ui_config volume\n(cluster settings)"]
+    end
+    KUI -->|"kafka-ui-net\nkafka1:29092"| B1["Broker 1"]
+    KUI -->|"kafka-ui-net\nkafka2:29093"| B2["Broker 2"]
+    KUI -->|"kafka-ui-net\nkafka3:29094"| B3["Broker 3"]
+`} />
+
+## Prerequisites
+
+- Docker Engine 20.10+, Docker Compose v2
+- `kafka-ui-net` network must exist: `docker network create kafka-ui-net`
+- At least one Kafka cluster must be running and reachable via `kafka-ui-net`
+
+## Ports
+
+| Port | Protocol | Description |
+|---|---|---|
+| `8080` | HTTP | Kafka UI web interface |
+
+Configurable via `KAFKA_UI_PORT`.
+
+:::note[Port conflict]
+Port 8080 is also the default for Jenkins. Set `KAFKA_UI_PORT=8081` if running both.
+:::
+
+## Configuration
+
+```bash
+cd kafka/confluent/kafka-ui
+cp .env.example .env
+```
+
+| Variable | Default | Notes |
+|---|---|---|
+| `KAFKA_UI_PORT` | `8080` | Web interface port |
+
+Cluster connections are configured via the Kafka UI web interface, not via environment variables.
+
+## Workflow
+
+```bash
+# Start
+docker compose up -d
+
+# Open UI
+open http://localhost:8080
+
+# Add a cluster:
+# Settings → Configure new cluster
+# Name: my-cluster
+# Bootstrap servers: kafka1:29092,kafka2:29093,kafka3:29094
+# (for auth clusters: add SASL credentials)
+
+# Stop
+docker compose down
+
+# Stop and remove cluster config data
+docker compose down -v
+```
+
+## Use Cases
+
+**Browse messages in a topic:**
+Select cluster → Topics → select topic → Messages tab → set offset and read.
+
+**Monitor consumer lag:**
+Select cluster → Consumer Groups → select group → view per-partition lag.
+
+**Create a topic:**
+Select cluster → Topics → Add a Topic → set name, partitions, replication factor.
+
+**Multi-cluster management:**
+Settings → add multiple clusters (e.g., dev cluster + prod cluster). Switch between them in the top navigation.
+
+## Connecting to the Auth Cluster
+
+When connecting Kafka UI to the `3-node-cluster-with-auth` template:
+
+1. **Settings → Configure new cluster**
+2. **Bootstrap servers:** `kafka1:29092,kafka2:29093,kafka3:29094`
+3. **Authentication:** SASL/PLAIN
+4. **Username:** `admin`
+5. **Password:** value of `KAFKA_ADMIN_PASSWORD` from the cluster's `.env`
+
+## Integration
+
+### Nginx Proxy Manager
+
+Uncomment the NPM block in `docker-compose.yml`, restart, and create a proxy host: `kafka-ui.yourdomain.com → kafka-ui:8080`.
+
+## References
+
+- [Kafka UI GitHub](https://github.com/provectus/kafka-ui)
+- [Kafka UI documentation](https://docs.kafka-ui.provectus.io/)

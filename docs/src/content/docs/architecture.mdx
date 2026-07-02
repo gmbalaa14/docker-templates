@@ -1,0 +1,107 @@
+---
+title: Architecture
+description: Cross-template network map and deployment topology for the Docker Templates collection.
+---
+
+import Mermaid from '../../components/Mermaid.astro';
+
+This page shows how the templates relate to each other and how they fit into a host deployment.
+
+## Cross-Template Network Map
+
+Two shared bridge networks connect templates that need to talk to each other. All other services are network-isolated by default.
+
+<Mermaid diagram={`
+graph TB
+    subgraph Host["Host Machine"]
+        subgraph proxy-net["proxy-net (shared bridge)"]
+            NPM["Nginx Proxy Manager\n:80 :443 :81"]
+            Seq_p["Datalust Seq\n(opted in)"]
+            Headroom_p["Headroom\n(opted in)"]
+            Homarr_p["Homarr\n(opted in)"]
+            Jenkins_p["Jenkins\n(opted in)"]
+            Portainer_p["Portainer\n(opted in)"]
+            SQ_p["SonarQube\n(opted in)"]
+        end
+
+        subgraph kafka-ui-net["kafka-ui-net (shared bridge)"]
+            KUI["Kafka UI\n:8080"]
+            K1["Broker 1\n:9092"]
+            K2["Broker 2\n:9094"]
+            K3["Broker 3\n:9096"]
+        end
+
+        subgraph isolated["Isolated (default network only)"]
+            Seq_i["Datalust Seq\n:5341 :8090"]
+            Headroom_i["Headroom\n:8787"]
+            Homarr_i["Homarr\n:7575"]
+            Jenkins_i["Jenkins\n:8080 :50000"]
+            Portainer_i["Portainer\n:9443 :8000"]
+            SQ_i["SonarQube\n:9000"]
+        end
+    end
+
+    Internet["Internet / LAN"] -->|":80 :443"| NPM
+    NPM -->|reverse proxy| Seq_p
+    NPM -->|reverse proxy| Headroom_p
+    NPM -->|reverse proxy| Homarr_p
+    NPM -->|reverse proxy| Jenkins_p
+    NPM -->|reverse proxy| Portainer_p
+    NPM -->|reverse proxy| SQ_p
+    KUI -->|broker discovery| K1
+    KUI -->|broker discovery| K2
+    KUI -->|broker discovery| K3
+`} />
+
+**Key points:**
+- Services are isolated by default. They only join `proxy-net` when you uncomment the NPM opt-in block at the bottom of their `docker-compose.yml`.
+- `kafka-ui-net` is always joined by Kafka clusters — the UI cannot discover brokers without it.
+- Two separate `proxy-net` and isolated entries for the same service represent the two operating modes (with or without NPM integration).
+
+## Deployment Overview
+
+<Mermaid diagram={`
+graph LR
+    subgraph External["External Access"]
+        Browser["Browser / API Client"]
+        KafkaClient["Kafka Producer / Consumer"]
+    end
+
+    subgraph Host["Host Machine (Linux / macOS / Windows)"]
+        subgraph Docker["Docker Engine"]
+            NPM["Nginx Proxy Manager\n:80 :443"]
+            Services["Other Services\n(internal ports only)"]
+            Kafka["Kafka Brokers\n:9092 :9094 :9096"]
+        end
+        Volumes["Named Docker Volumes\n(persistent data)"]
+    end
+
+    Browser -->|"HTTPS :443"| NPM
+    Browser -->|"Direct port (dev only)"| Services
+    KafkaClient -->|"External listener\n:9092 / :9094 / :9096"| Kafka
+    Docker -->|"mounts"| Volumes
+`} />
+
+**Production guidance:**
+- In production, expose only NPM on ports 80/443. Keep all service ports bound to `127.0.0.1` or unexposed.
+- For Kafka, bind external listeners to a specific host IP rather than `0.0.0.0`.
+- Use named volumes (already the default) so data persists across `docker compose down`.
+
+## Per-Template Topologies
+
+Each template page includes a service topology diagram showing its specific containers, volumes, ports, and network membership. See the [Templates](/templates/datalust-seq/) section in the sidebar.
+
+## Shared Networks
+
+| Network | Created by | Joined by | Purpose |
+|---|---|---|---|
+| `proxy-net` | You (once, manually) | NPM (always), any service that opts in | SSL termination and reverse proxying |
+| `kafka-ui-net` | You (once, manually) | Kafka UI, Kafka clusters | Broker discovery from the UI |
+
+```bash
+# Create both networks once on your host before starting any service
+docker network create proxy-net
+docker network create kafka-ui-net
+```
+
+For a detailed explanation of how these networks work and how to opt services in, see [Networking](/networking/).

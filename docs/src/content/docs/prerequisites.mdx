@@ -1,0 +1,114 @@
+---
+title: Prerequisites
+description: Global and per-template prerequisites for running Docker Compose templates.
+---
+
+## Global Prerequisites
+
+Every template requires these on the host machine:
+
+| Requirement | Minimum version | Notes |
+|---|---|---|
+| [Docker Engine](https://docs.docker.com/engine/install/) | 20.10 | The Docker daemon |
+| [Docker Compose v2](https://docs.docker.com/compose/install/) | 2.0 | The `docker compose` plugin (note: **not** `docker-compose` v1) |
+| Git | Any | To clone this repository |
+
+:::tip[Verify your versions]
+```bash
+docker --version          # Docker version 20.10+
+docker compose version    # Docker Compose version v2+
+```
+:::
+
+## Shared Network Setup
+
+Two shared networks must exist on the host before starting any template that uses them. Create them once:
+
+```bash
+docker network create proxy-net
+docker network create kafka-ui-net
+```
+
+These commands are idempotent — safe to re-run if the networks already exist.
+
+## Per-Template Prerequisites
+
+Some templates require additional host configuration beyond Docker itself.
+
+| Template | Extra prerequisites |
+|---|---|
+| Datalust Seq | None |
+| Headroom | None |
+| Homarr | None (Docker socket optional) |
+| Jenkins | None (Docker socket required for Docker-in-Docker) |
+| Nginx Proxy Manager | Ports 80 and 443 must be free on the host |
+| Portainer | None |
+| SonarQube | **4 GB RAM minimum**; `vm.max_map_count=524288` on Linux (see below) |
+| Kafka UI | A running Kafka cluster reachable via `kafka-ui-net` |
+| Kafka cluster (with/without auth) | Host IP address of the Docker host (for external listeners) |
+
+### SonarQube: `vm.max_map_count`
+
+SonarQube embeds Elasticsearch, which requires a higher virtual memory map limit than the Linux default.
+
+**Linux (persistent across reboots):**
+```bash
+echo "vm.max_map_count=524288" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+**Linux (current session only):**
+```bash
+sudo sysctl -w vm.max_map_count=524288
+```
+
+**Docker Desktop on Mac:**
+```
+Docker Desktop → Settings → Resources → Advanced → Virtual disk limit
+```
+In Docker Desktop 4.x, open a terminal in the VM:
+```
+docker run --rm --privileged alpine sysctl -w vm.max_map_count=524288
+```
+
+**Docker Desktop on Windows (WSL2):**
+```powershell
+# In an elevated PowerShell or WSL terminal:
+wsl -d docker-desktop sysctl -w vm.max_map_count=524288
+```
+
+### Kafka: Finding your host IP
+
+Kafka external listeners must advertise the actual IP of the Docker host so clients outside Docker can connect. How to find it:
+
+**Linux:**
+```bash
+ip route get 1 | awk '{print $7; exit}'
+```
+
+**macOS:**
+```bash
+ipconfig getifaddr en0
+```
+
+**Docker Desktop on Mac:**
+Use the special hostname `host.docker.internal` instead of an IP.
+
+**Docker Desktop on Windows:**
+Run `ipconfig` and look for the WSL adapter IP, or use `host.docker.internal`.
+
+Set this value as `KAFKA_HOST_IP` in your `.env` file.
+
+## Platform-Specific Notes
+
+### Docker Desktop (Mac / Windows)
+
+All templates use named volumes (no host-path bind mounts), making them fully compatible with Docker Desktop. The only exceptions are:
+
+- **Docker socket** (`/var/run/docker.sock`) — used by Homarr, Jenkins, and Portainer. Docker Desktop exposes this socket on Mac and Windows.
+- **SonarQube kernel tuning** — requires the Docker Desktop VM workaround above.
+- **Kafka host IP** — use `host.docker.internal` instead of a physical IP.
+
+### Portainer-based Deployment
+
+When deploying via Portainer Stacks, the `.env` file is replaced by Portainer's **Environment variables** UI. Paste each variable from `.env.example` into the UI when creating the stack.

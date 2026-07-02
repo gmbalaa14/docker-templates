@@ -1,4 +1,4 @@
-.PHONY: all lint validate ports build smoke help
+.PHONY: all lint validate ports build smoke docs help
 
 SHELL := /bin/bash
 ROOT  := $(shell pwd)
@@ -15,6 +15,7 @@ help:
 	@echo "  make ports     — Cross-template default port conflict detection"
 	@echo "  make build     — docker build for all templates with a Dockerfile"
 	@echo "  make smoke     — Start each stack, verify containers are running, tear down"
+	@echo "  make docs      — Build the Astro Starlight documentation site"
 	@echo "  make all       — Run lint + validate + ports + build"
 
 lint:
@@ -60,5 +61,10 @@ smoke:
 	    docker compose down -v 2>&1) || true; \
 	done
 	@echo "smoke: done"
+
+docs:
+	@echo "==> Building documentation site"
+	@cd docs && npm ci && npm run build
+	@echo "docs: build complete (output in docs/dist/)"
 
 all: lint validate ports build

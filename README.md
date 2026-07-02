@@ -1,8 +1,13 @@
 # Docker Compose Templates
 
 ![CI](https://github.com/gmbalaa14/docker-templates/actions/workflows/validate.yml/badge.svg)
+![Docs](https://github.com/gmbalaa14/docker-templates/actions/workflows/deploy-docs.yml/badge.svg)
 ![License](https://img.shields.io/github/license/gmbalaa14/docker-templates)
 ![Last Commit](https://img.shields.io/github/last-commit/gmbalaa14/docker-templates)
+
+> **Full documentation site:** [gmbalaa14.github.io/docker-templates](https://gmbalaa14.github.io/docker-templates/)
+>
+> The docs site includes architecture diagrams, a decision guide, security hardening, troubleshooting, and full per-template references.
 
 A curated collection of ready-to-use Docker Compose configurations for self-hosted services. Each template is self-contained, fully parameterised via `.env` files, and compatible with Docker CLI, [Portainer](https://www.portainer.io/), and Docker Desktop.
 

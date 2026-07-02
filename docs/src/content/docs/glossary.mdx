@@ -1,0 +1,108 @@
+---
+title: Glossary
+description: Definitions of terms used throughout the Docker Templates documentation.
+---
+
+## bcrypt hash
+
+A one-way cryptographic hash of a password. Used by **Datalust Seq** and **Portainer** to store admin passwords securely — the plain text password is never stored or transmitted in the environment file, only its hash.
+
+Generate a bcrypt hash:
+```bash
+# For Seq
+echo 'your-password' | docker run --rm -i datalust/seq config hash
+
+# For Portainer (htpasswd format)
+docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'your-password'
+```
+
+## Broker
+
+A single Kafka server process. A Kafka cluster consists of multiple brokers. Each broker holds a partition of each topic's data. In this repo's Kafka templates, there are always 3 brokers.
+
+## Controller (KRaft)
+
+In KRaft mode, one or more brokers take on the **controller** role, replacing ZooKeeper for cluster metadata management. The controllers form a Raft consensus group. In this repo's templates, all 3 brokers are also controllers (`process.roles=broker,controller`).
+
+## Docker Compose v2
+
+The modern Docker Compose implementation, distributed as a Docker CLI plugin. Invoked as `docker compose` (with a space). Supersedes the legacy Python-based `docker-compose` v1 (with a hyphen). All templates in this repo require v2.
+
+## docker-compose.yml
+
+The YAML configuration file that defines a multi-container Docker application. Specifies services, images, ports, volumes, networks, environment variables, and more. Each template has one.
+
+## `.env` file
+
+A plain-text file containing `KEY=value` pairs. Docker Compose reads it automatically if present in the same directory as `docker-compose.yml`, substituting variables into the compose configuration. Never commit `.env` files — only commit `.env.example`.
+
+## `.env.example`
+
+A template for `.env` containing all variable names with blank or placeholder values and documentation comments. Committed to version control so contributors can see what variables a template requires.
+
+## External network
+
+A Docker network declared in `docker-compose.yml` with `external: true`. This means the network must already exist on the host — Docker Compose will not create it. Both `proxy-net` and `kafka-ui-net` are declared as external.
+
+## kafka-ui-net
+
+A shared Docker bridge network that connects Kafka broker containers to the Kafka UI container, enabling the UI to reach brokers by container hostname rather than by host IP and mapped port. See [Networking](/networking/).
+
+## KRaft (Kafka Raft)
+
+The protocol that replaces ZooKeeper for Kafka cluster metadata management (introduced in Apache Kafka 2.8, production-stable in 3.3). With KRaft, there is no ZooKeeper dependency — brokers coordinate via a built-in Raft consensus protocol. Both Kafka templates in this repo use KRaft mode.
+
+## Let's Encrypt
+
+A free, automated Certificate Authority (CA) used by **Nginx Proxy Manager** to issue SSL/TLS certificates automatically via the ACME protocol. Certificates are valid for 90 days and renewed automatically.
+
+## Listener (Kafka)
+
+A named network endpoint that Kafka brokers use to accept connections. Each broker in these templates has three listeners:
+- **EXTERNAL**: for clients outside Docker (producers/consumers)
+- **INTERNAL** (or PLAINTEXT_INTERNAL): for broker-to-broker communication
+- **CONTROLLER**: for KRaft controller quorum
+
+## Named volume
+
+A Docker volume identified by a human-readable name (e.g., `sonarqube_data`) rather than a host filesystem path. Named volumes are managed by Docker and survive `docker compose down`. Use `docker compose down -v` to remove them (destroys data).
+
+## NPM opt-in block
+
+A commented YAML block at the bottom of every `docker-compose.yml` in this repo. Uncommenting it adds the service to `proxy-net`, enabling Nginx Proxy Manager to reverse-proxy it. See [Networking](/networking/#the-npm-opt-in-pattern).
+
+## Portainer
+
+A web-based Docker management UI. Can be used to deploy templates from this repo as stacks without using the command line. See the [Portainer template page](/templates/portainer/).
+
+## proxy-net
+
+A shared Docker bridge network owned by **Nginx Proxy Manager**. Services that join it (via the NPM opt-in block) can be reverse-proxied by NPM using their container hostname. See [Networking](/networking/).
+
+## Quorum
+
+In KRaft, a quorum is the minimum number of controller nodes that must be running for the cluster to elect a leader and remain operational. For a 3-node cluster, the quorum is 2 (majority). The cluster tolerates 1 node failure.
+
+## Replication factor
+
+The number of copies of each Kafka partition stored across brokers. A replication factor of 3 means each partition has a leader on one broker and replicas on two others. The Kafka templates in this repo set replication factor 3.
+
+## `restart: unless-stopped`
+
+A Docker Compose restart policy. The container restarts automatically after crashes or Docker daemon restarts, **but not** if it was deliberately stopped with `docker compose stop` or `docker compose down`. Preferred over `restart: always` because `always` restarts even deliberately stopped containers.
+
+## SASL/PLAIN
+
+A Kafka authentication mechanism (Simple Authentication and Security Layer, PLAIN mechanism). Credentials (username + password) are sent as plaintext over the wire — the "PLAIN" refers to the credential format, not the transport security. Used by the `3-node-cluster-with-auth` template to restrict broker access to known users.
+
+:::caution
+SASL/PLAIN sends credentials in base64, not encrypted. For true security, pair it with TLS. These templates don't include TLS termination for Kafka.
+:::
+
+## Stack (Portainer)
+
+A Portainer concept equivalent to a `docker compose` project. You can deploy templates from this repo as stacks via **Portainer → Stacks → Add Stack**, providing the compose file and environment variables via the UI.
+
+## `vm.max_map_count`
+
+A Linux kernel parameter controlling the maximum number of memory map areas a process can have. SonarQube's embedded Elasticsearch requires this to be at least `524288` (the Linux default is `65530`). See [Prerequisites](/prerequisites/#sonarqube-vmmax_map_count).

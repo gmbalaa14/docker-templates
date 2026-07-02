@@ -1,0 +1,107 @@
+---
+title: Environment Variables
+description: Complete reference of all .env variables across every template in this repository.
+---
+
+All templates are configured via `.env` files. Copy `.env.example` to `.env` in each template directory and fill in the values. This page is a consolidated reference.
+
+## Datalust Seq
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `SEQ_INGEST_PORT` | `5341` | No | Host port for log ingestion (HTTP) |
+| `SEQ_UI_PORT` | `8090` | No | Host port for the Seq web UI |
+| `SEQ_FIRSTRUN_ADMINPASSWORDHASH` | _(empty)_ | No | Bcrypt hash of admin password. If unset, Seq starts with no authentication. Generate: `echo 'password' \| docker run --rm -i datalust/seq config hash` |
+
+## Headroom
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `HEADROOM_PORT` | `8787` | No | Host port the proxy listens on |
+| `HEADROOM_BIND_HOST` | `127.0.0.1` | No | Bind address. Set to `0.0.0.0` for LAN access (see [Security](/security/)) |
+| `HEADROOM_CODE_AWARE` | `true` | No | Enable code-aware token optimisation |
+| `HEADROOM_TELEMETRY` | `false` | No | Send usage telemetry (disabled by default) |
+
+## Homarr
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `HOMARR_PORT` | `7575` | No | Host port for the Homarr web UI |
+
+## Jenkins
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `JENKINS_PORT` | `8080` | No | Host port for the Jenkins web UI and REST API |
+| `JENKINS_AGENT_PORT` | `50000` | No | Host port for JNLP agent connections |
+
+:::note[Port conflict]
+Port `8080` is also the default for Kafka UI. If running both, change one: `JENKINS_PORT=8081` or `KAFKA_UI_PORT=8081`.
+:::
+
+## Nginx Proxy Manager
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `NPM_HTTP_PORT` | `80` | No | HTTP port (must be 80 for Let's Encrypt HTTP-01 challenge) |
+| `NPM_HTTPS_PORT` | `443` | No | HTTPS port |
+| `NPM_ADMIN_PORT` | `81` | No | Admin web UI port |
+
+## Portainer
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `PORTAINER_HTTPS_PORT` | `9443` | No | Host port for the Portainer HTTPS UI |
+| `PORTAINER_TUNNEL_PORT` | `8000` | No | Host port for edge agent tunnel connections |
+| `PORTAINER_ADMIN_PASSWORD_HASH` | _(empty)_ | No | Bcrypt hash of the initial admin password. If unset, set via the first-access UI |
+
+## SonarQube
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `SONARQUBE_PORT` | `9000` | No | Host port for the SonarQube web UI |
+| `SONAR_DB_PASSWORD` | _(none)_ | **Yes** | PostgreSQL password for the `sonar` user. No default — must be set or the stack fails to start |
+
+## Kafka UI
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `KAFKA_UI_PORT` | `8080` | No | Host port for the Kafka UI web interface |
+
+:::note[Port conflict]
+Port `8080` is also the default for Jenkins. If running both, change one: `KAFKA_UI_PORT=8081` or `JENKINS_PORT=8081`.
+:::
+
+## Kafka 3-node Cluster (with auth)
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `KAFKA_CLUSTER_ID` | _(none)_ | **Yes** | Unique UUID for the KRaft cluster. Generate: `docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid` |
+| `KAFKA_HOST_IP` | _(none)_ | **Yes** | IP address of the Docker host for external listener advertisement. See [Prerequisites](/prerequisites/#kafka-finding-your-host-ip) |
+| `KAFKA_ADMIN_PASSWORD` | _(none)_ | **Yes** | SASL/PLAIN password for the `admin` superuser |
+| `KAFKA_TEST_PASSWORD` | _(none)_ | **Yes** | SASL/PLAIN password for the `test` client user |
+| `KAFKA1_EXTERNAL_PORT` | `9092` | No | External listener port for broker 1 |
+| `KAFKA1_CONTROLLER_PORT` | `9093` | No | Controller listener port for broker 1 |
+| `KAFKA1_INTERNAL_PORT` | `29092` | No | Internal (kafka-ui-net) listener port for broker 1 |
+| `KAFKA2_EXTERNAL_PORT` | `9094` | No | External listener port for broker 2 |
+| `KAFKA2_CONTROLLER_PORT` | `9095` | No | Controller listener port for broker 2 |
+| `KAFKA2_INTERNAL_PORT` | `29093` | No | Internal listener port for broker 2 |
+| `KAFKA3_EXTERNAL_PORT` | `9096` | No | External listener port for broker 3 |
+| `KAFKA3_CONTROLLER_PORT` | `9097` | No | Controller listener port for broker 3 |
+| `KAFKA3_INTERNAL_PORT` | `29094` | No | Internal listener port for broker 3 |
+
+## Kafka 3-node Cluster (without auth)
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `KAFKA_CLUSTER_ID` | _(none)_ | **Yes** | Unique UUID for the KRaft cluster. Same generation command as above |
+| `KAFKA_HOST_IP` | _(none)_ | **Yes** | IP address of the Docker host |
+| `KAFKA1_EXTERNAL_PORT` | `9092` | No | External listener port for broker 1 |
+| `KAFKA1_CONTROLLER_PORT` | `9093` | No | Controller listener port for broker 1 |
+| `KAFKA1_INTERNAL_PORT` | `29092` | No | Internal listener port for broker 1 |
+| `KAFKA2_EXTERNAL_PORT` | `9094` | No | External listener port for broker 2 |
+| `KAFKA2_CONTROLLER_PORT` | `9095` | No | Controller listener port for broker 2 |
+| `KAFKA2_INTERNAL_PORT` | `29093` | No | Internal listener port for broker 2 |
+| `KAFKA3_EXTERNAL_PORT` | `9096` | No | External listener port for broker 3 |
+| `KAFKA3_CONTROLLER_PORT` | `9097` | No | Controller listener port for broker 3 |
+| `KAFKA3_INTERNAL_PORT` | `29094` | No | Internal listener port for broker 3 |

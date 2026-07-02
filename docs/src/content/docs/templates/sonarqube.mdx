@@ -1,0 +1,160 @@
+---
+title: SonarQube
+description: Code quality and security analysis for 30+ languages with quality gates and dashboards.
+---
+
+import Mermaid from '../../../components/Mermaid.astro';
+
+**Images:** `sonarqube:10.6-community` + `postgres:16`  
+**Port:** `9000` (UI + API)  
+**Data:** `sonarqube_data`, `sonarqube_extensions`, `sonarqube_logs`, `postgresql`, `postgresql_data`
+
+## Introduction
+
+[SonarQube Community Edition](https://www.sonarsource.com/products/sonarqube/) is a static analysis and security scanning platform for 30+ programming languages. It provides quality metrics, security hotspot detection, code smell identification, and quality gates that can block CI builds when standards aren't met.
+
+This template bundles a dedicated PostgreSQL 16 database. The database is not exposed outside the Docker network.
+
+## When to Use
+
+- You want continuous code quality tracking across one or more repositories
+- Your team needs security vulnerability detection beyond what your IDE provides
+- You want to integrate quality gates into a Jenkins pipeline
+- You're working in Java, C#, JavaScript, TypeScript, Python, Go, or any of 30+ supported languages
+
+## Architecture
+
+<Mermaid diagram={`
+graph LR
+    Browser["Browser / CI Pipeline"] -->|":9000"| SQ
+    Jenkins["Jenkins\n(scanner plugin)"] -->|"scan results\n:9000 API"| SQ
+    subgraph SonarQube Stack
+        SQ["SonarQube\n:9000"]
+        PG["PostgreSQL 16\n(internal only)"]
+        sq_data["sonarqube_data"]
+        sq_ext["sonarqube_extensions"]
+        sq_log["sonarqube_logs"]
+        pg_data["postgresql_data"]
+    end
+    SQ <-->|"internal network"| PG
+    SQ --- sq_data
+    SQ --- sq_ext
+    SQ --- sq_log
+    PG --- pg_data
+`} />
+
+## Prerequisites
+
+- Docker Engine 20.10+, Docker Compose v2
+- **Minimum 4 GB RAM** on the host (SonarQube's Elasticsearch is memory-intensive)
+- **`vm.max_map_count=524288`** on Linux (see [Prerequisites](/prerequisites/#sonarqube-vmmax_map_count))
+
+## Ports
+
+| Port | Protocol | Description |
+|---|---|---|
+| `9000` | HTTP | SonarQube web UI and REST API |
+
+Configurable via `SONARQUBE_PORT`. PostgreSQL is not exposed to the host.
+
+## Volumes
+
+| Volume | Contents |
+|---|---|
+| `sonarqube_data` | Analysis data and search indices |
+| `sonarqube_extensions` | Installed plugins |
+| `sonarqube_logs` | Application logs |
+| `postgresql` | PostgreSQL configuration |
+| `postgresql_data` | PostgreSQL data files |
+
+## Configuration
+
+```bash
+cd sonarqube
+cp .env.example .env
+```
+
+| Variable | Default | Required | Notes |
+|---|---|---|---|
+| `SONARQUBE_PORT` | `9000` | No | Web UI port |
+| `SONAR_DB_PASSWORD` | _(none)_ | **Yes** | PostgreSQL password for the `sonar` user. No default — stack won't start without this |
+
+```bash
+# In sonarqube/.env
+SONAR_DB_PASSWORD=choose-a-strong-password
+```
+
+## Workflow
+
+```bash
+# Start (ensure vm.max_map_count is set first on Linux)
+docker compose up -d
+
+# SonarQube takes ~60-90 seconds to start
+docker compose logs -f sonarqube
+
+# Open UI
+open http://localhost:9000
+
+# Default credentials (MUST change on first login):
+# Username: admin
+# Password: admin
+
+# Stop
+docker compose down
+
+# Stop and remove all data (analyses, plugins, database)
+docker compose down -v
+```
+
+## Use Cases
+
+**Manual scan (Maven):**
+```bash
+mvn sonar:sonar \
+  -Dsonar.projectKey=my-project \
+  -Dsonar.host.url=http://localhost:9000 \
+  -Dsonar.login=your-token
+```
+
+**Manual scan (SonarScanner CLI):**
+```bash
+docker run --rm \
+  -e SONAR_HOST_URL=http://host:9000 \
+  -e SONAR_LOGIN=your-token \
+  -v "$(pwd):/usr/src" \
+  sonarsource/sonar-scanner-cli
+```
+
+**Jenkins integration:**
+Install the **SonarQube Scanner** plugin and the **Sonar Quality Gate** plugin. Configure the server URL in **Manage Jenkins → System → SonarQube servers**.
+
+**Quality gate example:** Block deployments if code coverage drops below 80% or if new critical security hotspots are introduced.
+
+## Security
+
+:::danger[Default credentials]
+SonarQube starts with `admin`/`admin`. Change this on first login. Anyone who can reach port 9000 with these credentials has admin access to all project analyses.
+:::
+
+## Docker Desktop Notes
+
+SonarQube's memory requirements (4 GB minimum) may conflict with Docker Desktop's default memory limit. Increase it in **Docker Desktop → Settings → Resources → Memory**.
+
+The `vm.max_map_count` setting is required even on Docker Desktop for Mac/Windows — apply it to the Docker Desktop VM as described in [Prerequisites](/prerequisites/#sonarqube-vmmax_map_count).
+
+## Integration
+
+### Nginx Proxy Manager
+
+Uncomment the NPM block in `docker-compose.yml`, restart, and create a proxy host: `sonar.yourdomain.com → sonarqube:9000`.
+
+### Jenkins
+
+See the [Multi-Template Combinations](/combinations/#full-cicd-stack-jenkins--sonarqube--nginx-proxy-manager) page for the full Jenkins + SonarQube pipeline setup.
+
+## References
+
+- [SonarQube documentation](https://docs.sonarqube.org/)
+- [SonarQube scanner for Maven](https://docs.sonarqube.org/latest/analyzing-source-code/scanners/sonarscanner-for-maven/)
+- [SonarQube quality gates](https://docs.sonarqube.org/latest/user-guide/quality-gates/)
