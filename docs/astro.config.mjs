@@ -7,9 +7,39 @@ import starlight from '@astrojs/starlight';
 // prevents Starlight from injecting the broken version automatically.
 const noopSitemap = { name: '@astrojs/sitemap', hooks: {} };
 
+const SITE_BASE = '/docker-templates';
+
+// Astro's `base` option only prefixes assets/routes it generates itself — it
+// never rewrites literal hrefs written in Markdown/MDX content. Starlight's
+// own sidebar/TOC/pagination links are correctly base-prefixed through its
+// internal pathWithBase() helper, but hand-authored links in page content
+// (e.g. `[Prerequisites](/prerequisites/)`) are not, and 404 once deployed
+// under a subpath. This mirrors pathWithBase() for content-authored links.
+function remarkBasePrefixInternalLinks() {
+  return (tree) => {
+    const visit = (node) => {
+      if (node.type === 'link' && typeof node.url === 'string') {
+        const isRootRelative = node.url.startsWith('/') && !node.url.startsWith('//');
+        const alreadyPrefixed =
+          node.url === SITE_BASE || node.url.startsWith(SITE_BASE + '/');
+        if (isRootRelative && !alreadyPrefixed) {
+          node.url = SITE_BASE + node.url;
+        }
+      }
+      if (Array.isArray(node.children)) {
+        node.children.forEach(visit);
+      }
+    };
+    visit(tree);
+  };
+}
+
 export default defineConfig({
   site: 'https://gmbalaa14.github.io',
-  base: '/docker-templates',
+  base: SITE_BASE,
+  markdown: {
+    remarkPlugins: [remarkBasePrefixInternalLinks],
+  },
   integrations: [
     noopSitemap,
     starlight({
