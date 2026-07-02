@@ -9,7 +9,7 @@ This page shows how the templates relate to each other and how they fit into a h
 
 ## Cross-Template Network Map
 
-Two shared bridge networks connect templates that need to talk to each other. All other services are network-isolated by default.
+Every template runs on its own isolated Docker network by default — no service can reach another unless you explicitly connect them. Two shared bridge networks exist specifically to bridge that isolation where it's needed: `proxy-net` lets Nginx Proxy Manager reach any service that opts in, and `kafka-ui-net` lets Kafka UI discover broker containers by name. See [Networking](/networking/) for the full mechanics of how opting in works.
 
 <Mermaid diagram={`
 graph TB
@@ -98,10 +98,4 @@ Each template page includes a service topology diagram showing its specific cont
 | `proxy-net` | You (once, manually) | NPM (always), any service that opts in | SSL termination and reverse proxying |
 | `kafka-ui-net` | You (once, manually) | Kafka UI, Kafka clusters | Broker discovery from the UI |
 
-```bash
-# Create both networks once on your host before starting any service
-docker network create proxy-net
-docker network create kafka-ui-net
-```
-
-For a detailed explanation of how these networks work and how to opt services in, see [Networking](/networking/).
+For the exact commands to create these networks, see [Prerequisites](/prerequisites/#shared-network-setup). For a detailed explanation of how they work and how to opt services in, see [Networking](/networking/).

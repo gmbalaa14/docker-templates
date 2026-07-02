@@ -48,6 +48,12 @@ graph LR
 
 Default bind is `127.0.0.1:8787` (localhost only). Set `HEADROOM_BIND_HOST=0.0.0.0` for LAN access.
 
+## Volumes
+
+| Volume | Contents |
+|---|---|
+| `headroom_data` | Session cache and proxy configuration |
+
 ## Configuration
 
 ```bash
@@ -76,6 +82,9 @@ docker compose logs -f
 
 # Stop
 docker compose down
+
+# Stop and remove cached session data (safe — just clears the cache)
+docker compose down -v
 ```
 
 **For LAN access** (share proxy with team):
@@ -105,11 +114,16 @@ Setting `HEADROOM_BIND_HOST=0.0.0.0` exposes the proxy to anyone on your network
 
 ### Nginx Proxy Manager
 
-Uncomment the NPM block in `docker-compose.yml` and create a proxy host: `headroom.yourdomain.com → headroom:8787`.
+Uncomment the [NPM opt-in block](/networking/#the-npm-opt-in-pattern) in `docker-compose.yml`, restart, and create a proxy host: `headroom.yourdomain.com → headroom:8787`.
 
 :::note
 If exposing Headroom via NPM on a public URL, ensure access is restricted (HTTP basic auth in NPM, or VPN requirement).
 :::
+
+## Related
+
+- Not sure if Headroom is the right fit? See [When to Use](/when-to-use/).
+- [Nginx Proxy Manager](/templates/nginx-proxy-manager/)
 
 ## References
 

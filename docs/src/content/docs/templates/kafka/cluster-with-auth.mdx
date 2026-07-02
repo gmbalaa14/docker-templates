@@ -81,28 +81,21 @@ cd kafka/confluent/3-node-cluster-with-auth
 cp .env.example .env
 ```
 
-**Required variables (no defaults):**
-
-| Variable | How to get the value |
-|---|---|
-| `KAFKA_CLUSTER_ID` | `docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid` |
-| `KAFKA_HOST_IP` | See [Prerequisites](/prerequisites/#kafka-finding-your-host-ip) |
-| `KAFKA_ADMIN_PASSWORD` | Choose a strong password (e.g., 20+ chars) |
-| `KAFKA_TEST_PASSWORD` | Choose a strong password for the `test` client user |
-
-**Optional port overrides:**
-
-| Variable | Default |
-|---|---|
-| `KAFKA1_EXTERNAL_PORT` | `9092` |
-| `KAFKA1_CONTROLLER_PORT` | `9093` |
-| `KAFKA1_INTERNAL_PORT` | `29092` |
-| `KAFKA2_EXTERNAL_PORT` | `9094` |
-| `KAFKA2_CONTROLLER_PORT` | `9095` |
-| `KAFKA2_INTERNAL_PORT` | `29093` |
-| `KAFKA3_EXTERNAL_PORT` | `9096` |
-| `KAFKA3_CONTROLLER_PORT` | `9097` |
-| `KAFKA3_INTERNAL_PORT` | `29094` |
+| Variable | Default | Required | Notes |
+|---|---|---|---|
+| `KAFKA_CLUSTER_ID` | _(none)_ | **Yes** | `docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid` |
+| `KAFKA_HOST_IP` | _(none)_ | **Yes** | See [Prerequisites](/prerequisites/#kafka-finding-your-host-ip) |
+| `KAFKA_ADMIN_PASSWORD` | _(none)_ | **Yes** | Choose a strong password (e.g., 20+ chars) |
+| `KAFKA_TEST_PASSWORD` | _(none)_ | **Yes** | Choose a strong password for the `test` client user |
+| `KAFKA1_EXTERNAL_PORT` | `9092` | No | External listener port for broker 1 |
+| `KAFKA1_CONTROLLER_PORT` | `9093` | No | Controller listener port for broker 1 |
+| `KAFKA1_INTERNAL_PORT` | `29092` | No | Internal (kafka-ui-net) listener port for broker 1 |
+| `KAFKA2_EXTERNAL_PORT` | `9094` | No | External listener port for broker 2 |
+| `KAFKA2_CONTROLLER_PORT` | `9095` | No | Controller listener port for broker 2 |
+| `KAFKA2_INTERNAL_PORT` | `29093` | No | Internal listener port for broker 2 |
+| `KAFKA3_EXTERNAL_PORT` | `9096` | No | External listener port for broker 3 |
+| `KAFKA3_CONTROLLER_PORT` | `9097` | No | Controller listener port for broker 3 |
+| `KAFKA3_INTERNAL_PORT` | `29094` | No | Internal listener port for broker 3 |
 
 ## Workflow
 
@@ -129,7 +122,7 @@ docker compose logs kafka1
 # Stop
 docker compose down
 
-# Stop and wipe all topic data
+# Stop and remove all data (topics, consumer offsets) — destructive
 docker compose down -v
 ```
 
@@ -171,6 +164,21 @@ kafka1:29092,kafka2:29093,kafka3:29094
 Authentication: SASL/PLAIN, username `admin`, password from `KAFKA_ADMIN_PASSWORD`.
 
 Note: Internal listeners use `PLAINTEXT` (no SASL) because the `kafka-ui-net` is a private Docker network. Only external listeners require SASL.
+
+## Use Cases
+
+**Team event bus:** Multiple services and team members produce and consume from shared topics, each authenticating with their own SASL credentials for auditability.
+
+**Pre-production staging:** Mirror the access-control shape of a real production Kafka deployment before committing to a hosted/managed cluster.
+
+**Multi-tenant local environments:** Issue separate SASL credentials per developer or per application to catch permission bugs before they reach production.
+
+## Related
+
+- Prototyping locally without team access? See [3-node cluster without auth](/templates/kafka/cluster-without-auth/) instead.
+- Not sure which Kafka template you need? See [Kafka Overview](/templates/kafka/) or [When to Use](/when-to-use/).
+- Setting up a full stack? See [Full Kafka Stack: Cluster + Kafka UI](/combinations/#full-kafka-stack-cluster--kafka-ui).
+- [Kafka UI](/templates/kafka/kafka-ui/)
 
 ## References
 

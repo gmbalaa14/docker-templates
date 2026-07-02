@@ -36,7 +36,7 @@ All templates are configured via `.env` files. Copy `.env.example` to `.env` in 
 | `JENKINS_AGENT_PORT` | `50000` | No | Host port for JNLP agent connections |
 
 :::note[Port conflict]
-Port `8080` is also the default for Kafka UI. If running both, change one: `JENKINS_PORT=8081` or `KAFKA_UI_PORT=8081`.
+Port `8080` is also the default for Kafka UI. See [Troubleshooting](/troubleshooting/#port-8080-already-in-use) if both are running.
 :::
 
 ## Nginx Proxy Manager
@@ -69,7 +69,7 @@ Port `8080` is also the default for Kafka UI. If running both, change one: `JENK
 | `KAFKA_UI_PORT` | `8080` | No | Host port for the Kafka UI web interface |
 
 :::note[Port conflict]
-Port `8080` is also the default for Jenkins. If running both, change one: `KAFKA_UI_PORT=8081` or `JENKINS_PORT=8081`.
+Port `8080` is also the default for Jenkins. See [Troubleshooting](/troubleshooting/#port-8080-already-in-use) if both are running.
 :::
 
 ## Kafka 3-node Cluster (with auth)

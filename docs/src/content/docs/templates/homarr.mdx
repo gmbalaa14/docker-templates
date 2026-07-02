@@ -83,7 +83,7 @@ open http://localhost:7575
 # Stop
 docker compose down
 
-# Stop and remove all data (layout, icons, state)
+# Stop and remove all data (layout, icons, state) — destructive
 docker compose down -v
 ```
 
@@ -105,11 +105,17 @@ The template mounts `/var/run/docker.sock` for container discovery. This gives t
 
 ### Nginx Proxy Manager
 
-Uncomment the NPM block in `docker-compose.yml`, restart, and create a proxy host: `dashboard.yourdomain.com → homarr:7575`.
+Uncomment the [NPM opt-in block](/networking/#the-npm-opt-in-pattern) in `docker-compose.yml`, restart, and create a proxy host: `dashboard.yourdomain.com → homarr:7575`.
 
 ### Portainer
 
 Deploy as a Portainer stack. Set `HOMARR_PORT` in the Environment variables UI if the default conflicts.
+
+## Related
+
+- Not sure if Homarr is the right fit? See [When to Use](/when-to-use/).
+- Want container management alongside your dashboard? See [Dashboard + Management Stack: Homarr + Portainer](/combinations/#dashboard--management-stack-homarr--portainer).
+- [Portainer](/templates/portainer/) · [Nginx Proxy Manager](/templates/nginx-proxy-manager/)
 
 ## References
 

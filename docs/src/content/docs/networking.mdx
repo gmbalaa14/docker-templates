@@ -43,14 +43,7 @@ graph LR
 
 ## Creating the Networks
 
-Both networks must be created once on the host. The templates declare them as `external: true`, so Docker Compose will error if they don't exist before `docker compose up`.
-
-```bash
-docker network create proxy-net
-docker network create kafka-ui-net
-```
-
-These commands are idempotent — re-running them on an already-created network is safe.
+Both networks must be created once on the host. The templates declare them as `external: true`, so Docker Compose will error if they don't exist before `docker compose up`. See [Prerequisites](/prerequisites/#shared-network-setup) for the exact commands.
 
 ## The NPM Opt-In Pattern
 
@@ -74,8 +67,9 @@ Every template in this repo includes a commented block at the bottom of its `doc
 3. Restart the service: `docker compose up -d`
 4. In the NPM web UI (`http://your-host:81`), create a **Proxy Host** pointing to the container name and its internal port
 
-**Why two network entries?**  
-The `default:` entry keeps the service on its own default bridge network (for communication with other containers in the same compose project). The `proxy-net:` entry additionally joins the shared network so NPM can reach it. Without `default:`, the service would lose connectivity to its own stack.
+:::caution[Keep the default: entry]
+The `default:` entry keeps the service on its own default bridge network (for communication with other containers in the same compose project). The `proxy-net:` entry additionally joins the shared network so NPM can reach it. If you remove `default:` instead of adding to it, the service loses connectivity to its own stack (e.g. SonarQube would lose its database connection).
+:::
 
 ## Network Isolation
 

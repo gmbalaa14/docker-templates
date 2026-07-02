@@ -58,6 +58,20 @@ graph TB
 - `kafka-ui-net` network: `docker network create kafka-ui-net`
 - `KAFKA_CLUSTER_ID` and `KAFKA_HOST_IP` must be set
 
+## Ports
+
+| Port | Broker | Listener | Used by |
+|---|---|---|---|
+| `9092` | 1 | EXTERNAL (PLAINTEXT) | External clients |
+| `9093` | 1 | CONTROLLER | KRaft quorum |
+| `9094` | 2 | EXTERNAL (PLAINTEXT) | External clients |
+| `9095` | 2 | CONTROLLER | KRaft quorum |
+| `9096` | 3 | EXTERNAL (PLAINTEXT) | External clients |
+| `9097` | 3 | CONTROLLER | KRaft quorum |
+| `29092` | 1 | INTERNAL | Kafka UI via kafka-ui-net |
+| `29093` | 2 | INTERNAL | Kafka UI via kafka-ui-net |
+| `29094` | 3 | INTERNAL | Kafka UI via kafka-ui-net |
+
 ## Configuration
 
 ```bash
@@ -65,14 +79,19 @@ cd kafka/confluent/3-node-cluster-without-auth
 cp .env.example .env
 ```
 
-**Required variables:**
-
-| Variable | How to get the value |
-|---|---|
-| `KAFKA_CLUSTER_ID` | `docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid` |
-| `KAFKA_HOST_IP` | See [Prerequisites](/prerequisites/#kafka-finding-your-host-ip) |
-
-Port override variables are the same as the auth cluster (see [Environment Variables](/env-reference/#kafka-3-node-cluster-without-auth)).
+| Variable | Default | Required | Notes |
+|---|---|---|---|
+| `KAFKA_CLUSTER_ID` | _(none)_ | **Yes** | `docker run --rm confluentinc/cp-kafka:7.8.0 kafka-storage random-uuid` |
+| `KAFKA_HOST_IP` | _(none)_ | **Yes** | See [Prerequisites](/prerequisites/#kafka-finding-your-host-ip) |
+| `KAFKA1_EXTERNAL_PORT` | `9092` | No | External listener port for broker 1 |
+| `KAFKA1_CONTROLLER_PORT` | `9093` | No | Controller listener port for broker 1 |
+| `KAFKA1_INTERNAL_PORT` | `29092` | No | Internal (kafka-ui-net) listener port for broker 1 |
+| `KAFKA2_EXTERNAL_PORT` | `9094` | No | External listener port for broker 2 |
+| `KAFKA2_CONTROLLER_PORT` | `9095` | No | Controller listener port for broker 2 |
+| `KAFKA2_INTERNAL_PORT` | `29093` | No | Internal listener port for broker 2 |
+| `KAFKA3_EXTERNAL_PORT` | `9096` | No | External listener port for broker 3 |
+| `KAFKA3_CONTROLLER_PORT` | `9097` | No | Controller listener port for broker 3 |
+| `KAFKA3_INTERNAL_PORT` | `29094` | No | Internal listener port for broker 3 |
 
 ## Workflow
 
@@ -105,7 +124,7 @@ docker compose exec kafka1 \
 # Stop
 docker compose down
 
-# Stop and remove all topic data
+# Stop and remove all data (topics, consumer offsets) — destructive
 docker compose down -v
 ```
 
@@ -144,6 +163,21 @@ When you're ready to move to an authenticated setup:
 3. Follow the [auth cluster](/templates/kafka/cluster-with-auth/) setup guide
 
 Note: The auth and no-auth clusters cannot share the same `KAFKA_CLUSTER_ID` or data volumes.
+
+## Use Cases
+
+**Local development:** Run Kafka on your own machine while building and testing an application, without managing SASL credentials.
+
+**Learning Kafka:** Experiment with topics, partitions, and consumer groups without authentication getting in the way.
+
+**Isolated integration tests:** Spin up a disposable cluster in CI or a local sandbox, produce/consume test data, then tear it down with `docker compose down -v`.
+
+## Related
+
+- Need this reachable by a team or beyond your own machine? See [3-node cluster with auth](/templates/kafka/cluster-with-auth/) instead.
+- Not sure which Kafka template you need? See [Kafka Overview](/templates/kafka/) or [When to Use](/when-to-use/).
+- Setting up a full stack? See [Full Kafka Stack: Cluster + Kafka UI](/combinations/#full-kafka-stack-cluster--kafka-ui).
+- [Kafka UI](/templates/kafka/kafka-ui/)
 
 ## References
 

@@ -153,7 +153,7 @@ The Docker socket mount gives Jenkins (running as root) full control over all co
 
 ### Nginx Proxy Manager
 
-Uncomment the NPM block in `docker-compose.yml`, restart, and create a proxy host: `jenkins.yourdomain.com → jenkins:8080`.
+Uncomment the [NPM opt-in block](/networking/#the-npm-opt-in-pattern) in `docker-compose.yml`, restart, and create a proxy host: `jenkins.yourdomain.com → jenkins:8080`.
 
 ### SonarQube
 
@@ -162,6 +162,12 @@ In Jenkins: **Manage Jenkins → System → SonarQube servers** → add server U
 ### Portainer
 
 Deploy as a Portainer stack. Set `JENKINS_PORT` if needed.
+
+## Related
+
+- Not sure if Jenkins is the right fit? See [When to Use](/when-to-use/).
+- Building a full CI/CD pipeline? See [Full CI/CD Stack: Jenkins + SonarQube + Nginx Proxy Manager](/combinations/#full-cicd-stack-jenkins--sonarqube--nginx-proxy-manager).
+- [SonarQube](/templates/sonarqube/) · [Nginx Proxy Manager](/templates/nginx-proxy-manager/) · [Portainer](/templates/portainer/)
 
 ## References
 
