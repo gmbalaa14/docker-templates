@@ -1,20 +1,15 @@
 ---
 title: Docker Templates
 description: Curated Docker Compose templates for self-hosted services — copy, configure, deploy.
-template: splash
-hero:
-  tagline: Production-ready Docker Compose stacks for self-hosted services. Copy, configure, and deploy in minutes.
-  actions:
-    - text: Browse Templates
-      link: /templates/datalust-seq/
-      icon: right-arrow
-    - text: When to Use
-      link: /when-to-use/
-      icon: right-arrow
-      variant: minimal
+tableOfContents: false
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, LinkButton } from '@astrojs/starlight/components';
+
+**Production-ready Docker Compose stacks for self-hosted services. Copy, configure, and deploy in minutes.**
+
+<LinkButton href="./templates/datalust-seq/" icon="right-arrow">Browse Templates</LinkButton>{' '}
+<LinkButton href="./when-to-use/" variant="minimal" icon="right-arrow">When to Use</LinkButton>
 
 ## What is this?
 
@@ -78,6 +73,6 @@ docker compose up -d
 
 ## Not sure which template to use?
 
-See the [When to Use](/when-to-use/) guide for a decision flowchart and comparison table.
+See the [When to Use](./when-to-use/) guide for a decision flowchart and comparison table.
 
-Want to deploy multiple services together? See [Multi-Template Combinations](/combinations/).
+Want to deploy multiple services together? See [Multi-Template Combinations](./combinations/).
