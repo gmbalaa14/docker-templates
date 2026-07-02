@@ -84,7 +84,7 @@ open http://localhost:8080
 # Stop
 docker compose down
 
-# Stop and remove cluster config data
+# Stop and remove all data (cluster configs) — destructive
 docker compose down -v
 ```
 
@@ -104,7 +104,7 @@ Settings → add multiple clusters (e.g., dev cluster + prod cluster). Switch be
 
 ## Connecting to the Auth Cluster
 
-When connecting Kafka UI to the `3-node-cluster-with-auth` template:
+When connecting Kafka UI to the [3-node cluster with auth](/templates/kafka/cluster-with-auth/):
 
 1. **Settings → Configure new cluster**
 2. **Bootstrap servers:** `kafka1:29092,kafka2:29093,kafka3:29094`
@@ -116,7 +116,13 @@ When connecting Kafka UI to the `3-node-cluster-with-auth` template:
 
 ### Nginx Proxy Manager
 
-Uncomment the NPM block in `docker-compose.yml`, restart, and create a proxy host: `kafka-ui.yourdomain.com → kafka-ui:8080`.
+Uncomment the [NPM opt-in block](/networking/#the-npm-opt-in-pattern) in `docker-compose.yml`, restart, and create a proxy host: `kafka-ui.yourdomain.com → kafka-ui:8080`.
+
+## Related
+
+- Not sure which Kafka template you need? See [Kafka Overview](/templates/kafka/) or [When to Use](/when-to-use/).
+- Setting up a full stack? See [Full Kafka Stack: Cluster + Kafka UI](/combinations/#full-kafka-stack-cluster--kafka-ui).
+- [3-node cluster (with auth)](/templates/kafka/cluster-with-auth/) · [3-node cluster (without auth)](/templates/kafka/cluster-without-auth/)
 
 ## References
 

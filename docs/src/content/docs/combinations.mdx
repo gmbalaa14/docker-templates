@@ -87,6 +87,10 @@ graph LR
    ip route get 1 | awk '{print $7; exit}'
    ```
 
+   :::caution[KAFKA_CLUSTER_ID can't be changed later]
+   Save the generated UUID before starting the cluster. Changing `KAFKA_CLUSTER_ID` after the brokers have written data breaks the cluster — you'd need to wipe all volumes and start over.
+   :::
+
 3. Start the cluster:
    ```bash
    # With auth

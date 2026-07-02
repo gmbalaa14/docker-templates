@@ -105,12 +105,20 @@ open http://localhost:81
 3. `docker compose up -d` in that service's directory
 4. The container name is now resolvable from NPM
 
+**Stopping NPM:**
+```bash
+docker compose down
+
+# Stop and remove all data (proxy hosts, SSL certificates) — destructive
+docker compose down -v
+```
+
 ## Use Cases
 
-**HTTPS for Jenkins:** Domain `jenkins.yourdomain.com` → `jenkins:8080`  
-**HTTPS for SonarQube:** Domain `sonar.yourdomain.com` → `sonarqube:9000`  
-**HTTPS for Portainer:** Domain `portainer.yourdomain.com` → `portainer:9000` (or use Portainer's native HTTPS on 9443 directly)  
-**HTTPS for Homarr:** Domain `home.yourdomain.com` → `homarr:7575`
+**HTTPS for [Jenkins](/templates/jenkins/):** Domain `jenkins.yourdomain.com` → `jenkins:8080`  
+**HTTPS for [SonarQube](/templates/sonarqube/):** Domain `sonar.yourdomain.com` → `sonarqube:9000`  
+**HTTPS for [Portainer](/templates/portainer/):** Domain `portainer.yourdomain.com` → `portainer:9000` (or use Portainer's native HTTPS on 9443 directly)  
+**HTTPS for [Homarr](/templates/homarr/):** Domain `home.yourdomain.com` → `homarr:7575`
 
 ## Security
 
@@ -125,6 +133,12 @@ Do not expose port 81 to the internet. Restrict it to localhost or a trusted net
 ## Docker Desktop Notes
 
 On Docker Desktop, ports 80 and 443 should be available. If another process already binds these ports (e.g., a local web server), stop it first or remap NPM to alternate ports (though Let's Encrypt HTTP-01 requires port 80).
+
+## Related
+
+- Not sure if NPM is the right fit? See [When to Use](/when-to-use/).
+- Building a full CI/CD pipeline behind HTTPS? See [Full CI/CD Stack: Jenkins + SonarQube + Nginx Proxy Manager](/combinations/#full-cicd-stack-jenkins--sonarqube--nginx-proxy-manager).
+- [Jenkins](/templates/jenkins/) · [SonarQube](/templates/sonarqube/) · [Portainer](/templates/portainer/) · [Homarr](/templates/homarr/) · [Datalust Seq](/templates/datalust-seq/) · [Headroom](/templates/headroom/)
 
 ## References
 

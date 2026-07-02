@@ -103,7 +103,7 @@ open http://localhost:9000
 # Stop
 docker compose down
 
-# Stop and remove all data (analyses, plugins, database)
+# Stop and remove all data (analyses, plugins, database) — destructive
 docker compose down -v
 ```
 
@@ -147,11 +147,16 @@ The `vm.max_map_count` setting is required even on Docker Desktop for Mac/Window
 
 ### Nginx Proxy Manager
 
-Uncomment the NPM block in `docker-compose.yml`, restart, and create a proxy host: `sonar.yourdomain.com → sonarqube:9000`.
+Uncomment the [NPM opt-in block](/networking/#the-npm-opt-in-pattern) in `docker-compose.yml`, restart, and create a proxy host: `sonar.yourdomain.com → sonarqube:9000`.
 
 ### Jenkins
 
 See the [Multi-Template Combinations](/combinations/#full-cicd-stack-jenkins--sonarqube--nginx-proxy-manager) page for the full Jenkins + SonarQube pipeline setup.
+
+## Related
+
+- Not sure if SonarQube is the right fit? See [When to Use](/when-to-use/).
+- [Jenkins](/templates/jenkins/) · [Nginx Proxy Manager](/templates/nginx-proxy-manager/)
 
 ## References
 

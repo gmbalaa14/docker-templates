@@ -52,6 +52,12 @@ graph LR
 
 Both ports are configurable via `SEQ_INGEST_PORT` and `SEQ_UI_PORT`.
 
+## Volumes
+
+| Volume | Contents |
+|---|---|
+| `seq_data` | Ingested log events, dashboards, signals, and admin configuration |
+
 ## Configuration
 
 ```bash
@@ -71,6 +77,10 @@ echo 'your-password' | docker run --rm -i datalust/seq config hash
 # Copy the output hash into SEQ_FIRSTRUN_ADMINPASSWORDHASH in .env
 ```
 
+:::caution[Unauthenticated by default]
+If `SEQ_FIRSTRUN_ADMINPASSWORDHASH` is left unset, Seq starts with **no authentication** — anyone who can reach port `8090` can read and delete all logged events. Set this before exposing Seq beyond `localhost`.
+:::
+
 ## Workflow
 
 ```bash
@@ -86,7 +96,7 @@ open http://localhost:8090
 # Stop
 docker compose down
 
-# Stop and remove data
+# Stop and remove all data (events, dashboards, alerts config) — destructive
 docker compose down -v
 ```
 
@@ -114,15 +124,17 @@ In Seq UI → Signals → Create signal for a query pattern. Connect to a webhoo
 
 ### Nginx Proxy Manager
 
-Uncomment the NPM block at the bottom of `docker-compose.yml`, then restart:
-```bash
-docker compose up -d
-```
-Create a proxy host in NPM: `seq.yourdomain.com → seq:8090`.
+Uncomment the [NPM opt-in block](/networking/#the-npm-opt-in-pattern) in `docker-compose.yml`, restart, and create a proxy host: `seq.yourdomain.com → seq:8090`.
 
 ### Portainer
 
 Deploy as a Portainer stack. In the Environment variables UI, add `SEQ_INGEST_PORT`, `SEQ_UI_PORT`, and optionally `SEQ_FIRSTRUN_ADMINPASSWORDHASH`.
+
+## Related
+
+- Not sure if Seq is the right fit? See [When to Use](/when-to-use/).
+- Deploying Seq alongside an application that needs log collection? See [Logging Stack: Datalust Seq + Any Application](/combinations/#logging-stack-datalust-seq--any-application).
+- [Nginx Proxy Manager](/templates/nginx-proxy-manager/) · [Portainer](/templates/portainer/)
 
 ## References
 

@@ -26,20 +26,18 @@ A curated collection of self-contained Docker Compose configurations for self-ho
 git clone https://github.com/gmbalaa14/docker-templates.git
 cd docker-templates
 
-# 2. Create shared networks (once per host)
-docker network create proxy-net
-docker network create kafka-ui-net
-
-# 3. Pick a template and navigate to it
+# 2. Pick a template and navigate to it
 cd <template-name>
 
-# 4. Copy and fill in the environment file
+# 3. Copy and fill in the environment file
 cp .env.example .env
 # Edit .env with your values
 
-# 5. Start the service
+# 4. Start the service
 docker compose up -d
 ```
+
+Nginx Proxy Manager and the Kafka templates also require a one-time shared network — see [Prerequisites](./prerequisites/#shared-network-setup) for which templates need one and the exact command. Most templates need no extra setup beyond the steps above.
 
 ## Templates at a Glance
 

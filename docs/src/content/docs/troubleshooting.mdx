@@ -26,7 +26,7 @@ KAFKA_UI_PORT=8081
 max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]
 ```
 
-**Cause:** Elasticsearch (embedded in SonarQube) requires `vm.max_map_count ≥ 524288`. Linux defaults to 65530.
+**Cause:** Elasticsearch (embedded in SonarQube) requires `vm.max_map_count ≥ 524288`. Linux defaults to 65530. Setting this before you start SonarQube avoids this error entirely — see [Prerequisites](/prerequisites/#sonarqube-vmmax_map_count).
 
 **Fix (Linux):**
 ```bash
@@ -54,18 +54,7 @@ wsl -d docker-desktop sysctl -w vm.max_map_count=524288
 
 External clients receive the advertised listener address from the broker. If `KAFKA_HOST_IP` is `127.0.0.1`, clients try to connect to localhost — which doesn't resolve outside the container.
 
-**Fix:** Set `KAFKA_HOST_IP` to the actual IP of the Docker host machine.
-
-```bash
-# Linux
-KAFKA_HOST_IP=$(ip route get 1 | awk '{print $7; exit}')
-
-# macOS
-KAFKA_HOST_IP=$(ipconfig getifaddr en0)
-
-# Docker Desktop (Mac or Windows)
-KAFKA_HOST_IP=host.docker.internal
-```
+**Fix:** Set `KAFKA_HOST_IP` to the actual IP of the Docker host machine. See [Prerequisites](/prerequisites/#kafka-finding-your-host-ip) for the command for your platform (Linux, macOS, or Docker Desktop).
 
 Then add to `kafka/confluent/3-node-cluster-with-auth/.env` (or without-auth):
 ```
@@ -96,6 +85,8 @@ Same applies to `kafka-ui-net`:
 ```bash
 docker network create kafka-ui-net
 ```
+
+Creating both networks once up front, before you hit this error, is covered in [Prerequisites](/prerequisites/#shared-network-setup).
 
 ## Portainer Admin Password Expired
 

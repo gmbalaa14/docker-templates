@@ -48,6 +48,8 @@ graph LR
 
 Configurable via `PORTAINER_HTTPS_PORT` and `PORTAINER_TUNNEL_PORT`.
 
+Portainer's container also listens on internal port `9000` (plain HTTP), which is **not** published to the host and has no corresponding env var. It exists for reverse proxies on the same Docker network to reach Portainer without TLS — see [Integration](#integration) below.
+
 ## Volumes
 
 | Volume | Contents |
@@ -86,7 +88,7 @@ open https://localhost:9443
 # Stop
 docker compose down
 
-# Stop and remove all data (settings, stacks, endpoints)
+# Stop and remove all data (settings, stacks, endpoints) — destructive
 docker compose down -v
 ```
 
@@ -121,9 +123,15 @@ The Docker socket mount gives Portainer root-equivalent access to the host. Secu
 
 ### Nginx Proxy Manager
 
-Uncomment the NPM block in `docker-compose.yml`, restart, and create a proxy host: `portainer.yourdomain.com → portainer:9000`.
+Uncomment the [NPM opt-in block](/networking/#the-npm-opt-in-pattern) in `docker-compose.yml`, restart, and create a proxy host: `portainer.yourdomain.com → portainer:9000`.
 
-Note: If routing through NPM, set NPM to forward to port `9000` (Portainer's internal HTTP port) rather than `9443`, and let NPM handle SSL termination.
+Note: If routing through NPM, set NPM to forward to port `9000` (Portainer's internal HTTP port, see [Ports](#ports)) rather than `9443`, and let NPM handle SSL termination.
+
+## Related
+
+- Not sure if Portainer is the right fit? See [When to Use](/when-to-use/).
+- Want a dashboard alongside Docker management? See [Dashboard + Management Stack: Homarr + Portainer](/combinations/#dashboard--management-stack-homarr--portainer).
+- [Homarr](/templates/homarr/) · [Nginx Proxy Manager](/templates/nginx-proxy-manager/)
 
 ## References
 
