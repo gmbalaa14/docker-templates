@@ -18,6 +18,13 @@ export default defineConfig({
       social: {
         github: 'https://github.com/gmbalaa14/docker-templates',
       },
+      components: {
+        Footer: './src/components/Footer.astro',
+      },
+      editLink: {
+        baseUrl: 'https://github.com/gmbalaa14/docker-templates/edit/main/docs/src/content/docs/',
+      },
+      lastUpdated: true,
       sidebar: [
         {
           label: 'Getting Started',
