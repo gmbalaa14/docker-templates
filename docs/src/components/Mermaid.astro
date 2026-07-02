@@ -5,20 +5,163 @@ interface Props {
 const { diagram } = Astro.props;
 ---
 
-<pre class="mermaid not-content">{diagram}</pre>
+<div class="mermaid-block not-content">
+  <div class="mermaid-toolbar">
+    <button type="button" data-action="zoom-in" aria-label="Zoom in">+</button>
+    <button type="button" data-action="zoom-out" aria-label="Zoom out">−</button>
+    <button type="button" data-action="zoom-reset" aria-label="Reset zoom">Reset</button>
+    <button type="button" data-action="open-tab" aria-label="Open diagram in new tab">Open ↗</button>
+  </div>
+  <div class="mermaid-viewport">
+    <pre class="mermaid">{diagram}</pre>
+  </div>
+</div>
 
 <script>
   import mermaid from 'mermaid';
-  mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+
+  mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+
+  const ZOOM_STEP = 0.2;
+  const MIN_ZOOM = 0.4;
+  const MAX_ZOOM = 3;
+
+  function setupControls(block: HTMLElement) {
+    const viewport = block.querySelector<HTMLElement>('.mermaid-viewport');
+    const target = block.querySelector<HTMLElement>('.mermaid');
+    if (!viewport || !target) return;
+
+    let scale = 1;
+
+    const applyScale = () => {
+      target.style.transform = `scale(${scale})`;
+    };
+
+    block.querySelector('[data-action="zoom-in"]')?.addEventListener('click', () => {
+      scale = Math.min(MAX_ZOOM, +(scale + ZOOM_STEP).toFixed(2));
+      applyScale();
+    });
+
+    block.querySelector('[data-action="zoom-out"]')?.addEventListener('click', () => {
+      scale = Math.max(MIN_ZOOM, +(scale - ZOOM_STEP).toFixed(2));
+      applyScale();
+    });
+
+    block.querySelector('[data-action="zoom-reset"]')?.addEventListener('click', () => {
+      scale = 1;
+      applyScale();
+      viewport.scrollLeft = 0;
+      viewport.scrollTop = 0;
+    });
+
+    block.querySelector('[data-action="open-tab"]')?.addEventListener('click', () => {
+      const svg = target.querySelector('svg');
+      if (!svg) return;
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>Diagram</title><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff;}svg{max-width:100%;height:auto;}</style></head><body>${svg.outerHTML}</body></html>`;
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener');
+    });
+
+    let isPanning = false;
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+    let startScrollTop = 0;
+
+    viewport.addEventListener('pointerdown', (event) => {
+      if (event.pointerType !== 'mouse' || event.button !== 0) return;
+      isPanning = true;
+      startX = event.clientX;
+      startY = event.clientY;
+      startScrollLeft = viewport.scrollLeft;
+      startScrollTop = viewport.scrollTop;
+      viewport.classList.add('panning');
+      viewport.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+
+    viewport.addEventListener('pointermove', (event) => {
+      if (!isPanning) return;
+      viewport.scrollLeft = startScrollLeft - (event.clientX - startX);
+      viewport.scrollTop = startScrollTop - (event.clientY - startY);
+    });
+
+    const stopPanning = (event: PointerEvent) => {
+      if (!isPanning) return;
+      isPanning = false;
+      viewport.classList.remove('panning');
+      viewport.releasePointerCapture(event.pointerId);
+    };
+
+    viewport.addEventListener('pointerup', stopPanning);
+    viewport.addEventListener('pointercancel', stopPanning);
+  }
+
+  async function initMermaidBlocks() {
+    const blocks = document.querySelectorAll<HTMLElement>('.mermaid-block');
+    if (blocks.length === 0) return;
+    await mermaid.run({ querySelector: '.mermaid' });
+    blocks.forEach(setupControls);
+  }
+
+  initMermaidBlocks();
 </script>
 
 <style>
+  .mermaid-block {
+    margin: 1.5rem 0;
+  }
+
+  .mermaid-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .mermaid-toolbar button {
+    font-size: var(--sl-text-xs);
+    line-height: 1;
+    padding: 0.3rem 0.55rem;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--sl-color-gray-3);
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .mermaid-toolbar button:hover {
+    color: var(--sl-color-white);
+    border-color: var(--sl-color-gray-3);
+  }
+
+  .mermaid-viewport {
+    overflow: auto;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    cursor: grab;
+    touch-action: pan-x pan-y;
+  }
+
+  .mermaid-viewport.panning {
+    cursor: grabbing;
+    user-select: none;
+  }
+
   .mermaid {
     background: transparent;
     border: none;
     padding: 0;
     text-align: center;
+    transform-origin: top center;
+    transition: transform 0.15s ease;
+    width: max-content;
+    margin: 0 auto;
   }
+
   .mermaid svg {
     max-width: 100%;
     height: auto;
