@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/gmbalaa14/docker-templates/actions/workflows/validate.yml/badge.svg)
 ![Docs](https://github.com/gmbalaa14/docker-templates/actions/workflows/deploy-docs.yml/badge.svg)
-![License](https://img.shields.io/github/license/gmbalaa14/docker-templates)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 ![Last Commit](https://img.shields.io/github/last-commit/gmbalaa14/docker-templates)
 
 > **Full documentation site:** [gmbalaa14.github.io/docker-templates](https://gmbalaa14.github.io/docker-templates/)
